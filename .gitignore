@@ -7,11 +7,13 @@ data/
 tools/
 
 # ─── Training artifacts ───
-# เก็บเฉพาะผลที่ใช้ regenerate รายงานได้ (comparison_results.json, compare_log.txt)
-# ส่วนรูปกับ checkpoint สร้างใหม่ได้ — รูปที่รายงานใช้ถูก copy ไป docs/assets/ แล้ว
+# เก็บใน git เฉพาะสิ่งที่ทำให้คนอื่นทำงานต่อได้โดยไม่ต้องมีข้อมูลดิบ 2.5 GB:
+#   comparison_results.json  -> regenerate รายงานได้
+#   compare_log.txt          -> log การเทรนจริง
+#   features_cache.npz       -> บทเรียน notebook 2-8 รันได้เลย (192 KB)
+# ส่วนรูปกับ checkpoint สร้างใหม่ได้ และรูปที่รายงานใช้ถูก copy ไป docs/assets/ แล้ว
 outputs/*.png
 outputs/*.pt
-outputs/*.npz
 outputs/*/
 
 # ─── Python ───

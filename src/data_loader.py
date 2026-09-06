@@ -19,6 +19,10 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+# Recordings below this overall RMS are treated as "rig already stopped"
+# rather than as a measurement of a bearing. See load_dataset().
+MIN_RMS = 0.01
+
 
 def parse_ims_filename(filename: str) -> datetime:
     """Parse IMS filename into datetime object."""
@@ -72,6 +76,7 @@ def load_dataset(data_dir: str, verbose: bool = True) -> tuple:
 
     records = []
     data_list = []
+    dropped_idle = []
 
     iterator = tqdm(all_files, desc="Loading files") if verbose else all_files
 
@@ -90,6 +95,16 @@ def load_dataset(data_dir: str, verbose: bool = True) -> tuple:
 
         arr = arr[:, :4]  # use only 4 channels
 
+        # Skip recordings made while the rig was already stopped.
+        # The last files of 2nd_test hold near-zero signal (RMS ~0.002 vs ~0.5
+        # just before). They are not measurements of a bearing, and because
+        # compute_health_index() normalises by column min/max they would
+        # otherwise become the "healthiest" point in the whole run -- right at
+        # the moment of failure.
+        if float(np.sqrt(np.mean(arr ** 2))) < MIN_RMS:
+            dropped_idle.append(filepath.name)
+            continue
+
         records.append({
             "filename": filepath.name,
             "timestamp": ts,
@@ -99,6 +114,10 @@ def load_dataset(data_dir: str, verbose: bool = True) -> tuple:
 
     metadata = pd.DataFrame(records)
     raw_data = np.stack(data_list, axis=0)  # (N, 20480, 4)
+
+    if dropped_idle:
+        print(f"[DataLoader] Dropped {len(dropped_idle)} idle recordings "
+              f"(RMS < {MIN_RMS}): {', '.join(dropped_idle)}")
 
     print(f"[DataLoader] Loaded successfully -- shape: {raw_data.shape}")
     print(f"[DataLoader] Time range: {metadata['timestamp'].min()} -> {metadata['timestamp'].max()}")

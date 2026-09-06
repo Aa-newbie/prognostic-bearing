@@ -201,7 +201,7 @@ OVERVIEW_BODY = """
     </div>
 
     <div class="mini-metrics" style="margin-top:20px">
-      <div class="mini-metric"><div class="num">984</div><div class="lbl">ไฟล์ (จุดเวลา)</div></div>
+      <div class="mini-metric"><div class="num">982</div><div class="lbl">จุดเวลาที่ใช้ได้</div></div>
       <div class="mini-metric"><div class="num">6.8 วัน</div><div class="lbl">12–19 ก.พ. 2004</div></div>
       <div class="mini-metric"><div class="num">4</div><div class="lbl">ลูกปืนที่วัด</div></div>
       <div class="mini-metric"><div class="num">20 kHz</div><div class="lbl">อัตราสุ่มสัญญาณ</div></div>
@@ -217,7 +217,7 @@ OVERVIEW_BODY = """
           ด้วยอัตรา 20,000 ครั้งต่อวินาที<br>
           จึงได้ไฟล์ที่มี 20,480 แถว × 4 คอลัมน์ (คอลัมน์ละลูกปืน)<br>
           ชื่อไฟล์คือเวลาที่บันทึก เช่น <code style="color:var(--accent4)">2004.02.12.10.32.39</code><br><br>
-          <strong style="color:var(--text)">984 ไฟล์ × 10 นาที = 6.8 วัน</strong> ของการเดินเครื่องต่อเนื่อง<br>
+          <strong style="color:var(--text)">984 ไฟล์ × 10 นาที = 6.8 วัน</strong> ของการเดินเครื่องต่อเนื่อง<br><strong style="color:var(--accent3)">ใช้ได้จริง 982 ไฟล์</strong> — สองไฟล์สุดท้ายเป็นการบันทึกตอนเครื่องหยุดแล้ว (ดูหัวข้อ 5.2)<br>
           <span style="opacity:0.85">
             ไฟล์แรก 12 ก.พ. 2004 เวลา 10:32 → ไฟล์สุดท้าย 19 ก.พ. 2004 เวลา 06:22
           </span>
@@ -226,14 +226,15 @@ OVERVIEW_BODY = """
       <div class="info-block pink">
         <strong>💀 สภาพลูกปืนเมื่อจบการทดลอง</strong><br>
         <span style="color:var(--muted);font-size:0.85rem;line-height:1.9">
-          • <strong style="color:var(--accent1)">Bearing 1</strong> — ปกติดีตลอด<br>
+          • <strong style="color:#f87171">Bearing 1</strong> — <strong>Outer Race Failure</strong>
+            (วงแหวนรอบนอกแตก) ⚠️<br>
           • <strong style="color:var(--accent2)">Bearing 2</strong> — ปกติดีตลอด<br>
-          • <strong style="color:#f87171">Bearing 3</strong> — <strong>Outer Race Failure</strong>
-            (วงแหวนรอบนอกแตก)<br>
-          • <strong style="color:var(--accent3)">Bearing 4</strong> — <strong>Rolling Element Failure</strong>
-            (ตัวลูกกลิ้งเสียหาย)<br><br>
+          • <strong style="color:var(--accent1)">Bearing 3</strong> — ปกติดีตลอด<br>
+          • <strong style="color:var(--accent3)">Bearing 4</strong> — ปกติดีตลอด<br><br>
           <span style="opacity:0.85">
-            ตัวที่พังคือ 3 กับ 4 — กราฟด้านล่างจะเห็นสองเส้นนี้พุ่งขึ้นในช่วงท้ายอย่างชัดเจน
+            มีลูกปืนตัวเดียวที่พัง — กราฟด้านล่างจะเห็นเส้นของ Bearing 1
+            พุ่งขึ้นในช่วงท้ายอย่างชัดเจน ส่วนอีกสามเส้นนิ่งตลอด<br>
+            (ชุด 1st_test เป็นชุดที่ Bearing 3 กับ 4 พัง — คนละชุดกัน มักสับสนกัน)
           </span>
         </span>
       </div>
@@ -244,7 +245,7 @@ OVERVIEW_BODY = """
     <div class="img-card-header">📉 การเสื่อมสภาพจริงที่มองเห็นได้ในข้อมูล</div>
     <img src="assets/rms_trend.png" alt="RMS trend" onerror="this.parentElement.style.display='none'">
     <div class="img-card-footer">
-      <strong>กราฟบน</strong> — ค่า RMS (พลังงานการสั่นรวม) ของลูกปืนทั้ง 4 ตัวตลอด 984 จุดเวลา
+      <strong>กราฟบน</strong> — ค่า RMS (พลังงานการสั่นรวม) ของลูกปืนทั้ง 4 ตัวตลอด 982 จุดเวลา
       จะเห็นว่าเส้นค่อนข้างนิ่งเกือบตลอด แล้วพุ่งขึ้นเฉพาะช่วงท้าย นี่คือรูปแบบการเสื่อมที่พูดถึงในหัวข้อ 1
       &nbsp;|&nbsp;
       <strong>กราฟล่าง</strong> — Health Index ที่เราคำนวณขึ้นมาใช้เป็นคำตอบให้โมเดลเรียน (อธิบายในหัวข้อ 5.2)
@@ -264,7 +265,7 @@ OVERVIEW_BODY = """
   <div class="card">
     <h3><span class="step-num">1</span> ข้อมูลดิบใหญ่เกินไป → สกัดเป็น Features</h3>
     <p style="color:var(--muted);font-size:0.88rem;line-height:1.95">
-      หนึ่งไฟล์มี 20,480 ตัวเลขต่อลูกปืน ถ้าเอาทั้ง 984 ไฟล์มากองรวมกันจะได้ตัวเลขเกือบ
+      หนึ่งไฟล์มี 20,480 ตัวเลขต่อลูกปืน ถ้าเอาทั้ง 982 ไฟล์มากองรวมกันจะได้ตัวเลขเกือบ
       <strong style="color:var(--text)">80 ล้านตัว</strong> ซึ่งใหญ่เกินกว่าที่โมเดลลำดับเวลาจะรับไหว
       และส่วนใหญ่ก็เป็นข้อมูลซ้ำ ๆ ที่ไม่ได้ให้ข้อมูลเพิ่ม
     </p>
@@ -310,7 +311,7 @@ OVERVIEW_BODY = """
         ผลลัพธ์: 14 ตัวชี้วัด × ลูกปืน 4 ตัว =
         <strong style="color:var(--good);font-size:1.15em">56 features</strong> ต่อหนึ่งจุดเวลา<br>
         <span style="color:var(--muted)">
-          ข้อมูลถูกบีบจาก ~80 ล้านตัวเลข เหลือตาราง <code>(984, 56)</code> = 55,104 ตัวเลข
+          ข้อมูลถูกบีบจาก ~80 ล้านตัวเลข เหลือตาราง <code>(982, 56)</code> = 54,992 ตัวเลข
           <strong style="color:var(--text)">เล็กลงกว่า 1,400 เท่า</strong> แต่ยังเก็บข้อมูลที่จำเป็นไว้ครบ
         </span>
       </span>
@@ -346,6 +347,32 @@ OVERVIEW_BODY = """
         </div>
       </div>
     </details>
+  </div>
+
+  <!-- 5.1b -->
+  <div class="card" style="margin-top:20px" id="cleaning">
+    <h3><span class="step-num">1.5</span> ก่อนอื่น — ตัดข้อมูลที่ไม่ใช่การวัดออกก่อน</h3>
+    <p style="color:var(--muted);font-size:0.88rem;line-height:1.95">
+      สองไฟล์สุดท้ายของชุดข้อมูลมีสัญญาณเกือบเป็นศูนย์ (RMS ราว 0.002 เทียบกับ 0.48 ในไฟล์ก่อนหน้า)
+      นั่นคือการบันทึก<strong style="color:var(--text)">หลังเครื่องหยุดไปแล้ว</strong> ไม่ใช่การวัดลูกปืน
+    </p>
+    <div class="info-block pink" style="margin-top:14px">
+      <strong>ทำไมต้องตัดทิ้ง — ไม่ใช่แค่เรื่องความสะอาด</strong><br>
+      <span style="color:var(--muted);font-size:0.85rem;line-height:1.9">
+        Health Index คำนวณโดย normalize แต่ละ feature ด้วยค่า min–max ของตัวเอง
+        ถ้าปล่อยสองไฟล์นี้ไว้ มันจะกลายเป็น<strong style="color:var(--text)">ค่าต่ำสุด</strong>ของทุก feature
+        ทำให้ label บอกว่าลูกปืน<strong style="color:var(--text)">แข็งแรงที่สุด ณ วินาทีที่มันพังไปแล้ว</strong> —
+        กลับด้านกับความจริงสิ้นเชิง<br><br>
+        หลังตัดทิ้ง ช่วงของ Health Index เปลี่ยนจาก [0.13, 0.49] เป็น
+        <strong style="color:var(--good)">[0.19, 0.69]</strong> และค่าต่ำสุดย้ายไปอยู่ตอนท้ายอย่างที่ควรเป็น
+      </span>
+    </div>
+    <div class="info-block" style="margin-top:12px">
+      <span style="color:var(--muted);font-size:0.83rem">
+        โค้ดที่ทำหน้าที่นี้อยู่ใน <code>src/data_loader.py</code> —
+        ตัดไฟล์ที่ RMS รวมต่ำกว่า 0.01 ออกโดยอัตโนมัติและรายงานว่าตัดไปกี่ไฟล์
+      </span>
+    </div>
   </div>
 
   <!-- 5.2 -->
@@ -507,11 +534,11 @@ OVERVIEW_BODY = """
         </span>
       </div>
       <div class="info-block">
-        <strong>ทำไมได้ 965 หน้าต่าง</strong><br>
+        <strong>ทำไมได้ 963 หน้าต่าง</strong><br>
         <span style="color:var(--muted);font-size:0.83rem;line-height:1.9">
-          ข้อมูลมี 984 จุดเวลา หน้าต่างกว้าง 20 จุด<br>
-          หน้าต่างแรกเริ่มที่จุด 1 หน้าต่างสุดท้ายเริ่มที่จุด 965<br>
-          <strong style="color:var(--text)">984 − 20 + 1 = 965 หน้าต่าง</strong><br>
+          ข้อมูลมี 982 จุดเวลา หน้าต่างกว้าง 20 จุด<br>
+          หน้าต่างแรกเริ่มที่จุด 1 หน้าต่างสุดท้ายเริ่มที่จุด 963<br>
+          <strong style="color:var(--text)">982 − 20 + 1 = 963 หน้าต่าง</strong><br>
           แต่ละหน้าต่างคือหนึ่งตัวอย่างสำหรับเทรน
         </span>
       </div>
@@ -527,9 +554,9 @@ OVERVIEW_BODY = """
         <table>
           <thead><tr><th>ชุด</th><th>สัดส่วน</th><th>จำนวน</th><th>ใช้ทำอะไร</th></tr></thead>
           <tbody>
-            <tr><td style="color:var(--accent1);font-weight:700">Train</td><td>70%</td><td><strong>675</strong></td><td>ให้โมเดลเรียนรู้ ปรับน้ำหนักภายใน</td></tr>
+            <tr><td style="color:var(--accent1);font-weight:700">Train</td><td>70%</td><td><strong>674</strong></td><td>ให้โมเดลเรียนรู้ ปรับน้ำหนักภายใน</td></tr>
             <tr><td style="color:var(--accent3);font-weight:700">Validation</td><td>15%</td><td><strong>144</strong></td><td>เช็คระหว่างเทรนว่าควรหยุดตอนไหน / เลือก checkpoint</td></tr>
-            <tr><td style="color:var(--accent2);font-weight:700">Test</td><td>15%</td><td><strong>146</strong></td><td>ข้อสอบจริง ใช้ครั้งเดียวตอนจบ</td></tr>
+            <tr><td style="color:var(--accent2);font-weight:700">Test</td><td>15%</td><td><strong>145</strong></td><td>ข้อสอบจริง ใช้ครั้งเดียวตอนจบ</td></tr>
           </tbody>
         </table>
         <table style="margin-top:16px">
@@ -537,7 +564,7 @@ OVERVIEW_BODY = """
           <tbody>
             <tr><td>ขนาดหน้าต่าง</td><td><strong>20</strong></td><td>20 จุดเวลา = ~3 ชั่วโมง</td></tr>
             <tr><td>ระยะเลื่อน</td><td><strong>1</strong></td><td>เลื่อนทีละจุด เพื่อให้ได้ตัวอย่างมากที่สุด</td></tr>
-            <tr><td>จำนวนหน้าต่าง</td><td><strong>965</strong></td><td>984 − 20 + 1</td></tr>
+            <tr><td>จำนวนหน้าต่าง</td><td><strong>963</strong></td><td>982 − 20 + 1</td></tr>
             <tr><td>ขนาดข้อมูลเข้า</td><td><strong>(B, 20, 56)</strong></td><td>batch × หน้าต่าง × features</td></tr>
           </tbody>
         </table>
@@ -572,7 +599,7 @@ OVERVIEW_BODY = """
       <span class="step-num">1</span>
       <div>
         <div class="title">📥 อ่านข้อมูลดิบ</div>
-        <div class="desc">อ่าน 984 ไฟล์ → ก้อนข้อมูลขนาด (984, 20480, 4)</div>
+        <div class="desc">อ่าน 984 ไฟล์ ตัดที่เครื่องหยุดออก 2 → ก้อนข้อมูล (982, 20480, 4)</div>
       </div>
     </div>
     <div class="flow-arrow">↓</div>
@@ -580,7 +607,7 @@ OVERVIEW_BODY = """
       <span class="step-num purple">2</span>
       <div>
         <div class="title">🔬 สกัด Features</div>
-        <div class="desc">บีบสัญญาณ 20,480 จุด เหลือ 14 ตัวเลขต่อลูกปืน → ตาราง (984, 56)</div>
+        <div class="desc">บีบสัญญาณ 20,480 จุด เหลือ 14 ตัวเลขต่อลูกปืน → ตาราง (982, 56)</div>
       </div>
     </div>
     <div class="flow-arrow">↓</div>
@@ -596,7 +623,7 @@ OVERVIEW_BODY = """
       <span class="step-num orange">4</span>
       <div>
         <div class="title">🪟 ตัดเป็นหน้าต่างเวลา</div>
-        <div class="desc">Sliding window 20 จุด เลื่อนทีละ 1 → 965 ตัวอย่าง</div>
+        <div class="desc">Sliding window 20 จุด เลื่อนทีละ 1 → 963 ตัวอย่าง</div>
       </div>
     </div>
     <div class="flow-arrow">↓</div>
@@ -604,7 +631,7 @@ OVERVIEW_BODY = """
       <span class="step-num pink">5</span>
       <div>
         <div class="title">📊 แบ่งข้อมูล + ปรับสเกล</div>
-        <div class="desc">Train 675 / Val 144 / Test 146 — ปรับสเกลด้วยค่าจาก train เท่านั้น</div>
+        <div class="desc">Train 674 / Val 144 / Test 145 — ปรับสเกลด้วยค่าจาก train เท่านั้น</div>
       </div>
     </div>
     <div class="flow-arrow">↓</div>
@@ -793,9 +820,14 @@ __MODEL_CARDS__
           __CONC__% ของตัวอย่างมีค่าอยู่ในช่วงแคบ ทำให้ RMSE ดิบดูต่ำเกินจริง
           ต้องอ่านคู่กับ baseline เสมอ<br><br>
 
-          <strong style="color:var(--text)">3. หน้าต่างซ้อนทับกัน</strong><br>
+          <strong style="color:var(--text)">3. หน้าต่างซ้อนทับกัน — ข้อจำกัดที่ใหญ่ที่สุด</strong><br>
           หน้าต่างที่อยู่ติดกันใช้ข้อมูลร่วมกันถึง 19 จาก 20 จุด
-          เมื่อสุ่มสลับแล้วแบ่ง ชุด test จึงไม่เป็นอิสระจากชุด train อย่างสมบูรณ์<br><br>
+          เมื่อสุ่มสลับแล้วแบ่ง ชุด test จึงไม่เป็นอิสระจากชุด train<br>
+          <span style="color:var(--accent3)">วัดผลจริงแล้ว:</span> โมเดลเดียวกันได้
+          <strong style="color:var(--text)">R² = 0.94</strong> เมื่อสุ่มสลับ
+          แต่เหลือ <strong style="color:var(--text)">R² = 0.05</strong> เมื่อแบ่งตามเวลา
+          — ตัวเลขในรายงานนี้จึงใช้เทียบระหว่างโมเดลได้ แต่ห้ามตีความว่าเป็นความแม่นยำตอนใช้งานจริง
+          (<a href="#" onclick="return false" style="color:var(--accent3)">ดูการทดลองเต็มใน notebooks/08</a>)<br><br>
 
           <strong style="color:var(--text)">4. ทดสอบบนการทดลองเดียว</strong><br>
           ใช้เฉพาะ IMS 2nd_test ยังไม่ได้ยืนยันกับ 1st/3rd_test หรือเครื่องจักรอื่น<br><br>
@@ -826,7 +858,7 @@ __MODEL_CARDS__
         <tr><td><strong>Baseline</strong></td><td>วิธีทำนายแบบง่ายที่สุดที่ใช้เป็นเกณฑ์เปรียบเทียบ</td></tr>
         <tr><td><strong>Data Leakage</strong></td><td>ข้อมูลชุดทดสอบรั่วเข้าไปในขั้นตอนเทรน ทำให้ผลดูดีเกินจริง</td></tr>
         <tr><td><strong>FFT</strong></td><td>วิธีแปลงสัญญาณจากโดเมนเวลาเป็นโดเมนความถี่</td></tr>
-        <tr><td><strong>Outer Race</strong></td><td>วงแหวนรอบนอกของลูกปืน — จุดที่ Bearing 3 เสียหาย</td></tr>
+        <tr><td><strong>Outer Race</strong></td><td>วงแหวนรอบนอกของลูกปืน — จุดที่ Bearing 1 เสียหาย</td></tr>
       </tbody>
     </table>
   </div>
