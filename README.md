@@ -85,7 +85,7 @@ pip install -r requirements.txt
 3. แตกไฟล์:
 
    ```bash
-   python extract_data.py
+   python scripts/extract_data.py
    ```
 
    สคริปต์ใช้ `rarfile` ซึ่งต้องมีตัวแตก `.rar` ในเครื่องด้วย —
@@ -110,13 +110,13 @@ pip install -r requirements.txt
 
 ```bash
 # เทรนและเปรียบเทียบทั้ง 4 โมเดล (รอบแรก ~2 นาที รวมเวลาอ่านข้อมูลดิบ)
-python compare_models.py
+python scripts/compare_models.py
 
 # สร้างรายงาน HTML ทั้ง 6 หน้า
-python make_report.py
+python scripts/make_report.py
 ```
 
-เปิด `page1.html` ในเบราว์เซอร์เพื่อดูรายงาน
+เปิด `docs/index.html` ในเบราว์เซอร์เพื่อดูรายงาน
 
 ---
 
@@ -125,17 +125,17 @@ python make_report.py
 ### เทรนโมเดลเดียว (CNN-LSTM)
 
 ```bash
-python main.py
-python main.py --epochs 50 --batch_size 64
-python main.py --label piecewise      # health_index | piecewise | linear
+python scripts/train_single.py
+python scripts/train_single.py --epochs 50 --batch_size 64
+python scripts/train_single.py --label piecewise      # health_index | piecewise | linear
 ```
 
 ### เปรียบเทียบทุกโมเดล
 
 ```bash
-python compare_models.py                 # ใช้ features cache ถ้ามี
-python compare_models.py --epochs 50
-python compare_models.py --no-cache      # บังคับอ่านข้อมูลดิบใหม่
+python scripts/compare_models.py                 # ใช้ features cache ถ้ามี
+python scripts/compare_models.py --epochs 50
+python scripts/compare_models.py --no-cache      # บังคับอ่านข้อมูลดิบใหม่
 ```
 
 รอบแรกจะอ่าน 984 ไฟล์แล้ว cache features ไว้ที่ `outputs/features_cache.npz`
@@ -153,45 +153,68 @@ python compare_models.py --no-cache      # บังคับอ่านข้�
 
 ## รายงาน HTML
 
+รายงานอยู่ในโฟลเดอร์ `docs/` เปิด `docs/index.html` เพื่อเริ่มอ่าน
+
 | หน้า | เนื้อหา |
 |---|---|
-| `page1.html` | **ภาพรวมโปรเจกต์** — อธิบายตั้งแต่พื้นฐาน: ลูกปืนคืออะไร ทำไมการสั่นบอกสุขภาพได้ วิธีเตรียมข้อมูล วิธีอ่านผล + ตารางศัพท์ |
-| `page2.html` | CNN-LSTM — สถาปัตยกรรม, loss curve, ผลทำนาย, การกระจาย error |
-| `page3.html` | LSTM (โครงเดียวกัน) |
-| `page4.html` | BiLSTM |
-| `page5.html` | Transformer |
-| `page6.html` | เปรียบเทียบทุกโมเดล + sanity check เทียบ baseline |
+| `docs/index.html` | **ภาพรวมโปรเจกต์** — อธิบายตั้งแต่พื้นฐาน: ลูกปืนคืออะไร ทำไมการสั่นบอกสุขภาพได้ วิธีเตรียมข้อมูล วิธีอ่านผล + ตารางศัพท์ |
+| `docs/page2.html` | CNN-LSTM — สถาปัตยกรรม, loss curve, ผลทำนาย, การกระจาย error |
+| `docs/page3.html` | LSTM (โครงเดียวกัน) |
+| `docs/page4.html` | BiLSTM |
+| `docs/page5.html` | Transformer |
+| `docs/page6.html` | เปรียบเทียบทุกโมเดล + sanity check เทียบ baseline |
 
-> ⚠️ ทุกหน้าเป็นไฟล์ที่ **generate อัตโนมัติ** — อย่าแก้ `.html` โดยตรงเพราะจะถูกเขียนทับ
-> ให้แก้ที่ `report_overview.py` (เนื้อหาหน้าภาพรวม), `make_report.py` (โครงหน้าโมเดล/เปรียบเทียบ)
-> หรือ `report_config.py` (สี, CSS, คำอธิบายสถาปัตยกรรม) แล้วรัน `python make_report.py` ใหม่
+> ⚠️ ทุกหน้าเป็นไฟล์ที่ **generate อัตโนมัติ** — อย่าแก้ `.html` ใน `docs/` โดยตรงเพราะจะถูกเขียนทับ
+> ให้แก้ที่ `report/overview.py` (เนื้อหาหน้าภาพรวม), `scripts/make_report.py` (โครงหน้าโมเดล/เปรียบเทียบ)
+> หรือ `report/config.py` (สี, CSS, คำอธิบายสถาปัตยกรรม) แล้วรัน `python scripts/make_report.py` ใหม่
 
 ตัวเลขทุกตัวในรายงานอ่านมาจาก `outputs/comparison_results.json` ไม่มีการพิมพ์ด้วยมือ
+
+โฟลเดอร์ชื่อ `docs/` เพราะ GitHub Pages เปิด serve จากโฟลเดอร์นี้ได้เลย
+(Settings → Pages → Source: Deploy from a branch → `main` / `/docs`)
 
 ---
 
 ## โครงสร้างโปรเจกต์
 
 ```
-├── src/
-│   ├── data_loader.py      อ่านไฟล์ IMS + คำนวณ label 3 แบบ (linear / piecewise / health index)
-│   ├── features.py         สกัด 14 features × 4 channels = 56 features
-│   ├── dataset.py          sliding window + แบ่ง train/val/test + normalize
-│   ├── model.py            CNN-LSTM
-│   ├── models_extra.py     LSTM, BiLSTM, Transformer
-│   └── train.py            training loop + early stopping + metrics + plots
+prognostic-bearing/
+├── README.md
+├── requirements.txt
 │
-├── main.py                 เทรน CNN-LSTM ตัวเดียว
-├── compare_models.py       เทรนและเทียบทั้ง 4 โมเดล
-├── extract_data.py         แตก 2nd_test.rar → data/
+├── scripts/                    คำสั่งที่รันจริง (รันจากที่ไหนก็ได้)
+│   ├── extract_data.py           แตก 2nd_test.rar → data/
+│   ├── train_single.py           เทรน CNN-LSTM ตัวเดียว
+│   ├── compare_models.py         เทรนและเทียบทั้ง 4 โมเดล
+│   └── make_report.py            สร้างรายงาน HTML ทั้งหมด
 │
-├── make_report.py          generator หลักของรายงาน HTML
-├── report_config.py        สี, CSS, คำอธิบายสถาปัตยกรรม
-├── report_overview.py      เนื้อหาหน้าภาพรวม (page1)
+├── src/                        โค้ดหลัก (import เป็น package)
+│   ├── paths.py                  ที่อยู่ของทุกโฟลเดอร์ในโปรเจกต์
+│   ├── data_loader.py            อ่านไฟล์ IMS + คำนวณ label 3 แบบ
+│   ├── features.py               สกัด 14 features × 4 channels = 56
+│   ├── dataset.py                sliding window + split + normalize
+│   ├── model.py                  CNN-LSTM
+│   ├── models_extra.py           LSTM, BiLSTM, Transformer
+│   └── train.py                  training loop + early stopping + metrics
 │
-├── page1-6.html            รายงาน (generated)
-└── outputs/                ผลการเทรน, กราฟ, checkpoints
+├── report/                     เนื้อหาและสไตล์ของรายงาน
+│   ├── config.py                 สี, CSS, คำอธิบายสถาปัตยกรรม
+│   └── overview.py               เนื้อหาหน้าภาพรวม
+│
+├── docs/                       รายงาน HTML (generated + GitHub Pages root)
+│   ├── index.html
+│   ├── page2–6.html
+│   └── assets/                   รูปที่รายงานใช้
+│
+├── outputs/                    ผลการเทรน (json, log, กราฟ, checkpoints)
+├── tools/                      7-Zip / UnRAR (ไม่ขึ้น git)
+├── data/                       ข้อมูลที่แตกแล้ว (ไม่ขึ้น git)
+└── IMS/                        ไฟล์ .rar ต้นฉบับ (ไม่ขึ้น git)
 ```
+
+**สิ่งที่ไม่ได้ขึ้น git:** ชุดข้อมูล (~2.5 GB), ไฟล์ `.exe`, model checkpoints และรูปใน `outputs/`
+— ทั้งหมดสร้างใหม่ได้ ส่วนรูปที่รายงานต้องใช้ถูก copy ไปเก็บใน `docs/assets/` แล้ว
+ไฟล์ `outputs/comparison_results.json` ยังอยู่ใน git จึงสั่ง `make_report.py` ได้โดยไม่ต้องเทรนใหม่
 
 ---
 
@@ -225,11 +248,11 @@ python compare_models.py --no-cache      # บังคับอ่านข้�
 
 | อาการ | วิธีแก้ |
 |---|---|
-| `FileNotFoundError: data/2nd_test/2nd_test` | ยังไม่ได้แตกไฟล์ข้อมูล — ดูขั้นตอนที่ 3 |
+| `FileNotFoundError` ตอนโหลดข้อมูล | ยังไม่ได้แตกไฟล์ข้อมูล — ดูขั้นตอนที่ 3 |
 | `rarfile.RarCannotExec` | ยังไม่ได้ติดตั้ง 7-Zip / unrar ในเครื่อง หรือให้แตกไฟล์ด้วยมือแทน |
 | `UnicodeEncodeError` ตอนรันสคริปต์ | คอนโซล Windows เป็น cp1252 — รัน `chcp 65001` ก่อน หรือใช้ Windows Terminal |
 | กราฟในหน้า HTML ไม่ขึ้น | หน้าโหลด Chart.js จาก CDN ต้องต่ออินเทอร์เน็ต |
-| รูปในหน้า HTML ไม่ขึ้น | ยังไม่ได้รัน `compare_models.py` จึงยังไม่มีไฟล์ใน `outputs/` |
+| รูปในหน้า HTML ไม่ขึ้น | ยังไม่ได้รัน `scripts/compare_models.py` จึงยังไม่มีรูปให้ copy เข้า `docs/assets/` |
 
 ---
 

@@ -4,14 +4,15 @@ IMS.zip
 data/
 
 # ─── โปรแกรมแตกไฟล์ของบุคคลที่สาม ───
-7zr.exe
-UnRAR.exe
-unrar_installer.exe
-license.txt
+tools/
 
-# ─── Model checkpoints & cache (สร้างใหม่ได้ด้วย compare_models.py) ───
-*.pt
-outputs/features_cache.npz
+# ─── Training artifacts ───
+# เก็บเฉพาะผลที่ใช้ regenerate รายงานได้ (comparison_results.json, compare_log.txt)
+# ส่วนรูปกับ checkpoint สร้างใหม่ได้ — รูปที่รายงานใช้ถูก copy ไป docs/assets/ แล้ว
+outputs/*.png
+outputs/*.pt
+outputs/*.npz
+outputs/*/
 
 # ─── Python ───
 __pycache__/

@@ -3,30 +3,41 @@ make_report.py
 --------------
 Generate the whole HTML report from outputs/comparison_results.json.
 
-    page1.html   ภาพรวมโปรเจกต์
-    page2.html   CNN-LSTM
-    page3.html   LSTM
-    page4.html   BiLSTM
-    page5.html   Transformer
-    page6.html   เปรียบเทียบทุกโมเดล
+    docs/index.html   ภาพรวมโปรเจกต์
+    docs/page2.html   CNN-LSTM
+    docs/page3.html   LSTM
+    docs/page4.html   BiLSTM
+    docs/page5.html   Transformer
+    docs/page6.html   เปรียบเทียบทุกโมเดล
+
+รูปที่รายงานใช้จะถูก copy จาก outputs/ ไปไว้ที่ docs/assets/ ให้ด้วย
+เพื่อให้โฟลเดอร์ docs/ เปิดเป็นเว็บได้ในตัวเอง (GitHub Pages)
 
 Every number on every page is read from the training run, so after re-running
 compare_models.py just run this and the whole report stays in sync.
 
 Usage:
-    python make_report.py
+    python scripts/make_report.py
 """
 
-import os
 import json
+import shutil
+import sys
+from pathlib import Path
 
-from report_config import MODEL_ORDER, COLORS, ARCH, CSS
-from report_overview import OVERVIEW_BODY
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # ให้ import src/ และ report/ ได้
 
-RESULTS_PATH = os.path.join("outputs", "comparison_results.json")
+from src.paths import RESULTS_JSON, OUTPUT_DIR, DOCS_DIR, ASSETS_DIR
+from report.config import MODEL_ORDER, COLORS, ARCH, CSS
+from report.overview import OVERVIEW_BODY
 
 # (filename, nav label) — built in main()
 PAGES = []
+
+
+def page_href(index):
+    """หน้าที่ 1 คือ index.html เพื่อให้เปิดเป็นหน้าแรกของ GitHub Pages ได้"""
+    return "index.html" if index == 1 else "page%d.html" % index
 
 
 # ════════════════════════════ Shell ════════════════════════════
@@ -182,7 +193,7 @@ def build_overview(results, order):
         r = results[name]
         c = COLORS[name]
         rank = by_rmse.index(name)
-        page = "page%d.html" % (i + 2)
+        page = page_href(i + 2)
         cards.append(
             '  <a class="model-link" href="%s" style="border-color:%s33">\n'
             '    <div class="mtop"><span style="font-size:1.4rem">%s</span>'
@@ -246,11 +257,11 @@ new Chart(document.getElementById('overviewChart'), {
     }))
 
     footer = ('Bearing RUL Prediction &nbsp;·&nbsp; หน้า 1 จาก %d &nbsp;·&nbsp; '
-              '<a href="page2.html">เริ่มดูผลรายโมเดล: %s →</a>%s'
-              % (len(PAGES), order[0], FOOTER_NOTE))
+              '<a href="%s">เริ่มดูผลรายโมเดล: %s →</a>%s'
+              % (len(PAGES), page_href(2), order[0], FOOTER_NOTE))
 
     return shell(
-        filename="page1.html",
+        filename=page_href(1),
         title="ภาพรวมโปรเจกต์ | Bearing RUL Prediction",
         eyebrow="Prognostics & Health Management",
         h1="ทำนายสภาพลูกปืนด้วย Deep Learning",
@@ -269,7 +280,7 @@ def build_model_page(name, results, order, page_index):
     c = COLORS[name]
     by_rmse = sorted(order, key=lambda n: results[n]["rmse"])
     rank = by_rmse.index(name)
-    filename = "page%d.html" % page_index
+    filename = page_href(page_index)
 
     # layer stack
     rows = []
@@ -294,8 +305,8 @@ def build_model_page(name, results, order, page_index):
         here = n == name
         style = ' style="background:%s14"' % c if here else ""
         label = ('<strong style="color:%s">%s ← หน้านี้</strong>' % (c, n)) if here else \
-                ('<a href="page%d.html" style="color:%s;text-decoration:none">%s</a>'
-                 % (order.index(n) + 2, COLORS[n], n))
+                ('<a href="%s" style="color:%s;text-decoration:none">%s</a>'
+                 % (page_href(order.index(n) + 2), COLORS[n], n))
         rank_rows.append(
             '          <tr%s><td>%s</td><td>%s</td><td><strong>%.4f</strong></td>'
             '<td>%.4f</td><td>%.4f</td></tr>'
@@ -484,7 +495,7 @@ __LAYERS__
 
   <div class="img-card" style="margin-top:20px">
     <div class="img-card-header" style="color:__C__">🖼️ กราฟจากสคริปต์เทรน (matplotlib)</div>
-    <img src="outputs/__NAME___prediction.png" alt="__NAME__ prediction" onerror="this.parentElement.style.display='none'">
+    <img src="assets/__NAME___prediction.png" alt="__NAME__ prediction" onerror="this.parentElement.style.display='none'">
     <div class="img-card-footer">ลำดับตามดัชนีเดิมของ test set — RMSE __RMSE__ &nbsp;·&nbsp; MAE __MAE__ &nbsp;·&nbsp; r __R__</div>
   </div>
 </section>
@@ -655,9 +666,9 @@ new Chart(document.getElementById('histChart'), {
         "targets": r["test_targets"],
     }))
 
-    prev = ("page1.html", "ภาพรวมโปรเจกต์") if page_index == 2 else \
-           ("page%d.html" % (page_index - 1), order[page_index - 3])
-    nxt = ("page%d.html" % (page_index + 1),
+    prev = (page_href(1), "ภาพรวมโปรเจกต์") if page_index == 2 else \
+           (page_href(page_index - 1), order[page_index - 3])
+    nxt = (page_href(page_index + 1),
            order[page_index - 1] if page_index - 1 < len(order) else "เปรียบเทียบทุกโมเดล")
 
     body += "\n" + pager(prev, nxt)
@@ -679,7 +690,7 @@ new Chart(document.getElementById('histChart'), {
 # ════════════════════════════ Last page — comparison ════════════════════════════
 
 def build_comparison(results, order, page_index):
-    filename = "page%d.html" % page_index
+    filename = page_href(page_index)
     by_rmse = sorted(order, key=lambda n: results[n]["rmse"])
     best, worst = by_rmse[0], by_rmse[-1]
     b = results[best]
@@ -693,11 +704,11 @@ def build_comparison(results, order, page_index):
         rows.append(
             '          <tr%s>\n'
             '            <td>%s</td>\n'
-            '            <td><a href="page%d.html" style="color:%s;font-weight:700;text-decoration:none">%s →</a></td>\n'
+            '            <td><a href="%s" style="color:%s;font-weight:700;text-decoration:none">%s →</a></td>\n'
             '            <td><strong>%.4f</strong></td><td>%.4f</td><td>%.4f</td><td>%.4f</td>\n'
             '            <td>%s</td><td>%d</td><td>%.0fs</td>\n'
             '          </tr>'
-            % (style, rank_badge(i), order.index(n) + 2, COLORS[n], n,
+            % (style, rank_badge(i), page_href(order.index(n) + 2), COLORS[n], n,
                r["rmse"], r["mae"], r["pearson_r"], d["r2"],
                "{:,}".format(r["params"]), r["epochs_trained"], r["train_time_sec"])
         )
@@ -877,7 +888,7 @@ __BASEROWS__
 
   <div class="img-card" style="margin-top:20px">
     <div class="img-card-header">🖼️ ทุกโมเดลบนแกนเวลาเดียวกัน</div>
-    <img src="outputs/all_models_prediction.png" alt="All models" onerror="this.parentElement.style.display='none'">
+    <img src="assets/all_models_prediction.png" alt="All models" onerror="this.parentElement.style.display='none'">
     <div class="img-card-footer">เส้นดำคือ Health Index จริง เส้นสีคือค่าที่แต่ละโมเดลทำนาย</div>
   </div>
 </section>
@@ -987,7 +998,7 @@ __BASEROWS__
     ]:
         body = body.replace(key, val)
 
-    body += "\n" + pager(("page%d.html" % (page_index - 1), order[-1]), ("page1.html", "กลับหน้าภาพรวม"))
+    body += "\n" + pager((page_href(page_index - 1), order[-1]), (page_href(1), "กลับหน้าภาพรวม"))
 
     js = CHART_SETUP + """
 const D = __D__;
@@ -1070,7 +1081,7 @@ new Chart(document.getElementById('scatterChart'), {
     }))
 
     footer = ('Bearing RUL Prediction &nbsp;·&nbsp; หน้า %d จาก %d &nbsp;·&nbsp; '
-              '<a href="page1.html">← กลับหน้าภาพรวม</a>%s' % (page_index, len(PAGES), FOOTER_NOTE))
+              '<a href="%s">← กลับหน้าภาพรวม</a>%s' % (page_index, len(PAGES), page_href(1), FOOTER_NOTE))
 
     return filename, shell(
         filename=filename,
@@ -1086,46 +1097,72 @@ new Chart(document.getElementById('scatterChart'), {
 
 # ════════════════════════════ Main ════════════════════════════
 
-def main():
-    if not os.path.exists(RESULTS_PATH):
-        raise SystemExit("[ERROR] %s not found. Run: python compare_models.py" % RESULTS_PATH)
+def copy_assets(order):
+    """
+    Copy the PNGs the report links to into docs/assets/ so the published site
+    is self-contained. Missing files are skipped -- pages hide broken images.
+    """
+    ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+    wanted = ["rms_trend.png", "all_models_prediction.png"]
+    wanted += ["%s_prediction.png" % n for n in order]
 
-    with open(RESULTS_PATH, encoding="utf-8") as f:
+    copied, missing = 0, []
+    for name in wanted:
+        src = OUTPUT_DIR / name
+        if src.is_file():
+            shutil.copy2(src, ASSETS_DIR / name)
+            copied += 1
+        elif not (ASSETS_DIR / name).is_file():
+            missing.append(name)
+    return copied, missing
+
+
+def main():
+    if not RESULTS_JSON.is_file():
+        raise SystemExit(
+            "[ERROR] %s not found. Run: python scripts/compare_models.py" % RESULTS_JSON)
+
+    with open(RESULTS_JSON, encoding="utf-8") as f:
         results = json.load(f)
     if not results:
-        raise SystemExit("[ERROR] %s is empty." % RESULTS_PATH)
+        raise SystemExit("[ERROR] %s is empty." % RESULTS_JSON)
 
     # Keep the configured order, but only for models that were actually trained
     order = [n for n in MODEL_ORDER if n in results]
     order += [n for n in results if n not in order]
 
     PAGES.clear()
-    PAGES.append(("page1.html", "🏠 ภาพรวม"))
+    PAGES.append((page_href(1), "🏠 ภาพรวม"))
     for i, name in enumerate(order):
-        PAGES.append(("page%d.html" % (i + 2), "%s %s" % (ARCH.get(name, {}).get("icon", "📈"), name)))
-    PAGES.append(("page%d.html" % (len(order) + 2), "🏁 เปรียบเทียบ"))
+        PAGES.append((page_href(i + 2), "%s %s" % (ARCH.get(name, {}).get("icon", "📈"), name)))
+    PAGES.append((page_href(len(order) + 2), "🏁 เปรียบเทียบ"))
 
+    DOCS_DIR.mkdir(parents=True, exist_ok=True)
     written = []
 
-    html = build_overview(results, order)
-    with open("page1.html", "w", encoding="utf-8") as f:
-        f.write(html)
-    written.append(("page1.html", "overview", len(html)))
+    def write(fn, html, label):
+        (DOCS_DIR / fn).write_text(html, encoding="utf-8")
+        written.append((fn, label, len(html)))
+
+    write(page_href(1), build_overview(results, order), "overview")
 
     for i, name in enumerate(order):
         fn, html = build_model_page(name, results, order, i + 2)
-        with open(fn, "w", encoding="utf-8") as f:
-            f.write(html)
-        written.append((fn, name, len(html)))
+        write(fn, html, name)
 
     fn, html = build_comparison(results, order, len(order) + 2)
-    with open(fn, "w", encoding="utf-8") as f:
-        f.write(html)
-    written.append((fn, "comparison", len(html)))
+    write(fn, html, "comparison")
 
-    print("[OK] Generated %d pages from %d models" % (len(written), len(order)))
+    copied, missing = copy_assets(order)
+
+    print("[OK] Generated %d pages from %d models -> %s"
+          % (len(written), len(order), DOCS_DIR))
     for fn, label, size in written:
-        print("     %-12s %-14s %7d bytes" % (fn, label, size))
+        print("     %-14s %-14s %7d bytes" % (fn, label, size))
+    print("[OK] Copied %d images -> %s" % (copied, ASSETS_DIR))
+    if missing:
+        print("[WARN] Missing images (run compare_models.py first): %s"
+              % ", ".join(missing))
 
 
 if __name__ == "__main__":

@@ -23,26 +23,30 @@ import argparse
 import numpy as np
 import torch
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+import sys
+from pathlib import Path
 
-from data_loader import (
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # ให้ import src/ และ report/ ได้
+
+from src.paths import OUTPUT_DIR, resolve_data_dir
+from src.data_loader import (
     load_dataset,
     compute_linear_rul,
     compute_piecewise_rul,
     compute_health_index,
 )
-from features import extract_features
-from dataset import split_dataset
-from model import build_model
-from train import train, plot_training_curve, plot_rul_prediction, plot_feature_rms
+from src.features import extract_features
+from src.dataset import split_dataset
+from src.model import build_model
+from src.train import train, plot_training_curve, plot_rul_prediction, plot_feature_rms
 
 
 # ─────────────────────────── Config ───────────────────────────
 
 CONFIG = {
     # Data
-    "data_dir":    "data/2nd_test/2nd_test",
-    "output_dir":  "outputs",
+    "data_dir":    None,   # None = ใช้ค่าจาก src/paths.py
+    "output_dir":  str(OUTPUT_DIR),
 
     # Label strategy: "health_index" | "piecewise" | "linear"
     # health_index is recommended — it tracks actual bearing degradation
@@ -77,7 +81,8 @@ CONFIG = {
 
 def main():
     parser = argparse.ArgumentParser(description="Bearing RUL Prediction")
-    parser.add_argument("--data_dir",   type=str,   default=CONFIG["data_dir"])
+    parser.add_argument("--data_dir",   type=str,   default=None,
+                        help="โฟลเดอร์ข้อมูล IMS (ไม่ระบุ = ใช้ data/2nd_test/2nd_test)")
     parser.add_argument("--epochs",     type=int,   default=CONFIG["n_epochs"])
     parser.add_argument("--batch_size", type=int,   default=CONFIG["batch_size"])
     parser.add_argument(
@@ -87,7 +92,7 @@ def main():
     )
     args = parser.parse_args()
 
-    CONFIG["data_dir"]   = args.data_dir
+    CONFIG["data_dir"]   = args.data_dir or str(resolve_data_dir())
     CONFIG["n_epochs"]   = args.epochs
     CONFIG["batch_size"] = args.batch_size
     CONFIG["label"]      = args.label

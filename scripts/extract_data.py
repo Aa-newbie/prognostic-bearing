@@ -5,9 +5,14 @@ Usage: python extract_data.py
 
 import os
 import sys
+from pathlib import Path
 
-RAR_PATH = os.path.join("IMS", "IMS", "2nd_test.rar")
-OUT_DIR  = os.path.join("data", "2nd_test")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from src.paths import IMS_RAR, DATA_ROOT
+
+RAR_PATH = str(IMS_RAR)
+OUT_DIR  = str(DATA_ROOT / "2nd_test")
 
 
 def check_already_extracted():

@@ -30,16 +30,20 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+import sys
+from pathlib import Path
 
-from data_loader import load_dataset, compute_health_index
-from features import extract_features
-from dataset import split_dataset
-from model import CNNLSTM
-from models_extra import PureLSTM, BiLSTM, TransformerModel
-from train import train
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # ให้ import src/ และ report/ ได้
 
-CACHE_PATH = os.path.join("outputs", "features_cache.npz")
+from src.paths import OUTPUT_DIR, FEATURES_CACHE, resolve_data_dir
+from src.data_loader import load_dataset, compute_health_index
+from src.features import extract_features
+from src.dataset import split_dataset
+from src.model import CNNLSTM
+from src.models_extra import PureLSTM, BiLSTM, TransformerModel
+from src.train import train
+
+CACHE_PATH = FEATURES_CACHE
 
 # Must match page1.html / main.py
 WINDOW_SIZE = 20
@@ -50,16 +54,12 @@ SEED = 42
 
 def get_features(use_cache=True):
     """Load features from cache, or extract from raw IMS files and cache them."""
-    if use_cache and os.path.exists(CACHE_PATH):
+    if use_cache and CACHE_PATH.exists():
         print(f"Loading cached features from {CACHE_PATH} ...")
         cached = np.load(CACHE_PATH)
         return cached["features"]
 
-    data_dir = os.path.join("data", "2nd_test", "2nd_test")
-    if not os.path.exists(data_dir):
-        fallback_dir = os.path.join("data", "2nd_test")
-        if os.path.exists(fallback_dir):
-            data_dir = fallback_dir
+    data_dir = resolve_data_dir()
 
     print("Loading raw data (this takes a few minutes)...")
     metadata, raw_data = load_dataset(data_dir, verbose=True)
@@ -67,7 +67,7 @@ def get_features(use_cache=True):
     print("Extracting features...")
     features = extract_features(raw_data, fs=20000, verbose=True)
 
-    os.makedirs("outputs", exist_ok=True)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(CACHE_PATH, features=features)
     print(f"Cached features -> {CACHE_PATH}")
     return features
@@ -82,7 +82,7 @@ def main():
     parser.add_argument("--no-cache", dest="use_cache", action="store_false")
     args = parser.parse_args()
 
-    os.makedirs("outputs", exist_ok=True)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     features = get_features(use_cache=args.use_cache)
     print(f"Features shape: {features.shape}")
@@ -122,8 +122,8 @@ def main():
         print(f"Parameters: {params:,}")
 
         # Model-specific output dir so checkpoints don't overwrite each other
-        model_out_dir = os.path.join("outputs", name)
-        os.makedirs(model_out_dir, exist_ok=True)
+        model_out_dir = OUTPUT_DIR / name
+        model_out_dir.mkdir(parents=True, exist_ok=True)
 
         t0 = time.time()
         history = train(
@@ -135,7 +135,7 @@ def main():
             patience=args.patience,
             lr=args.lr,
             device=device,
-            output_dir=model_out_dir,
+            output_dir=str(model_out_dir),
         )
         train_time = time.time() - t0
 
@@ -166,11 +166,11 @@ def main():
         plt.ylabel("Health Index")
         plt.legend()
         plt.tight_layout()
-        plt.savefig(os.path.join("outputs", f"{name}_prediction.png"), dpi=150)
+        plt.savefig(OUTPUT_DIR / f"{name}_prediction.png", dpi=150)
         plt.close()
 
         # Write partial results after each model, so a crash later keeps earlier work
-        with open(os.path.join("outputs", "comparison_results.json"), "w") as f:
+        with open(OUTPUT_DIR / "comparison_results.json", "w") as f:
             json.dump(results, f, indent=2)
 
     print("\nGenerating comparison bar chart...")
@@ -196,7 +196,7 @@ def main():
     ax.legend()
 
     plt.tight_layout()
-    plt.savefig(os.path.join("outputs", "model_comparison.png"), dpi=150)
+    plt.savefig(OUTPUT_DIR / "model_comparison.png", dpi=150)
     plt.close()
 
     # Overlay of all model predictions vs ground truth
@@ -209,7 +209,7 @@ def main():
     plt.ylabel("Health Index")
     plt.legend(ncol=5, fontsize=9)
     plt.tight_layout()
-    plt.savefig(os.path.join("outputs", "all_models_prediction.png"), dpi=150)
+    plt.savefig(OUTPUT_DIR / "all_models_prediction.png", dpi=150)
     plt.close()
 
     best = min(names, key=lambda n: results[n]["rmse"])

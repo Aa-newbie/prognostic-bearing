@@ -1,7 +1,7 @@
 """
 report_overview.py
 ------------------
-Long-form body content for page1.html (the overview page).
+Long-form body content for the overview page (docs/index.html).
 
 Kept separate from make_report.py because this is prose, not generator logic.
 Placeholders written as __NAME__ are filled in by build_overview().
@@ -242,7 +242,7 @@ OVERVIEW_BODY = """
 
   <div class="img-card" style="margin-top:20px">
     <div class="img-card-header">📉 การเสื่อมสภาพจริงที่มองเห็นได้ในข้อมูล</div>
-    <img src="outputs/rms_trend.png" alt="RMS trend" onerror="this.parentElement.style.display='none'">
+    <img src="assets/rms_trend.png" alt="RMS trend" onerror="this.parentElement.style.display='none'">
     <div class="img-card-footer">
       <strong>กราฟบน</strong> — ค่า RMS (พลังงานการสั่นรวม) ของลูกปืนทั้ง 4 ตัวตลอด 984 จุดเวลา
       จะเห็นว่าเส้นค่อนข้างนิ่งเกือบตลอด แล้วพุ่งขึ้นเฉพาะช่วงท้าย นี่คือรูปแบบการเสื่อมที่พูดถึงในหัวข้อ 1
@@ -841,14 +841,14 @@ __MODEL_CARDS__
 pip install -r requirements.txt
 
 <span class="cmt"># 2. แตกไฟล์ข้อมูล IMS</span>
-python extract_data.py
+python scripts/extract_data.py
 
 <span class="cmt"># 3. เทรนและเปรียบเทียบทั้ง 4 โมเดล</span>
 <span class="cmt">#    (รอบแรกจะอ่านไฟล์ดิบ 984 ไฟล์แล้ว cache features ไว้)</span>
-python compare_models.py
+python scripts/compare_models.py
 
 <span class="cmt"># 4. สร้างรายงาน HTML ทุกหน้าจากผลที่ได้</span>
-python make_report.py</pre>
+python scripts/make_report.py</pre>
     <div class="info-block green" style="margin-top:16px">
       <span style="color:var(--muted);font-size:0.84rem;line-height:1.9">
         ทุกหน้าในรายงานนี้ถูก<strong style="color:var(--text)">สร้างอัตโนมัติ</strong>จากไฟล์ผลการเทรน
