@@ -1,0 +1,11 @@
+torch>=2.0.0
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.10.0
+scikit-learn>=1.3.0
+matplotlib>=3.7.0
+tqdm>=4.65.0
+
+# ใช้เฉพาะตอนแตกไฟล์ .rar ด้วย extract_data.py
+# ต้องมี unrar หรือ 7-Zip ติดตั้งในเครื่องด้วย (ดู README)
+rarfile>=4.0

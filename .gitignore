@@ -1,0 +1,33 @@
+# ─── Dataset (ไม่ push ขึ้น git — ดาวน์โหลดเองตาม README) ───
+IMS/
+IMS.zip
+data/
+
+# ─── โปรแกรมแตกไฟล์ของบุคคลที่สาม ───
+7zr.exe
+UnRAR.exe
+unrar_installer.exe
+license.txt
+
+# ─── Model checkpoints & cache (สร้างใหม่ได้ด้วย compare_models.py) ───
+*.pt
+outputs/features_cache.npz
+
+# ─── Python ───
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# ─── Editor / OS ───
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ─── Claude Code local settings ───
+.claude/

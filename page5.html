@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transformer | Bearing RUL Prediction</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0f1117;
+    --surface:  #1a1d27;
+    --card:     #21263a;
+    --border:   #2e3450;
+    --accent1:  #4f8ef7;
+    --accent2:  #6ee7b7;
+    --accent3:  #f97316;
+    --accent4:  #a78bfa;
+    --accent5:  #f472b6;
+    --text:     #e8eaf6;
+    --muted:    #8892b0;
+    --good:     #4ade80;
+    --radius:   14px;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.65;
+  }
+
+  /* Nav */
+  nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; flex-wrap: wrap;
+    padding: 0 26px; min-height: 54px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  nav .logo { font-weight: 800; font-size: 0.95rem; color: #fff; margin-right: 24px; }
+  nav a {
+    color: var(--muted); text-decoration: none;
+    font-size: 0.82rem; font-weight: 600;
+    padding: 15px 13px; border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s; white-space: nowrap;
+  }
+  nav a:hover { color: var(--text); }
+  nav a.active { color: var(--nav-active); border-bottom-color: var(--nav-active); }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(135deg, #1a1f35 0%, #0f1117 60%);
+    border-bottom: 1px solid var(--border);
+    padding: 50px 40px 46px; text-align: center;
+  }
+  .hero .eyebrow {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+  }
+  .hero h1 {
+    font-size: 2.4rem; font-weight: 800;
+    background: linear-gradient(135deg, var(--hero-a) 0%, var(--hero-b) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: 10px;
+  }
+  .hero p { color: var(--muted); font-size: 1rem; max-width: 680px; margin: 0 auto; }
+
+  /* Layout */
+  main { max-width: 1180px; margin: 0 auto; padding: 40px 24px; display: flex; flex-direction: column; gap: 44px; }
+
+  .section-title {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent1); margin-bottom: 18px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 28px;
+  }
+  .card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  @media (max-width: 860px) { .row-2, .row-3 { grid-template-columns: 1fr; } }
+
+  /* Info blocks */
+  .info-block {
+    background: rgba(79,142,247,0.06);
+    border: 1px solid rgba(79,142,247,0.2);
+    border-radius: 12px; padding: 18px 22px; margin-top: 12px;
+  }
+  .info-block.purple { background: rgba(167,139,250,0.06); border-color: rgba(167,139,250,0.2); }
+  .info-block.green  { background: rgba(74,222,128,0.06);  border-color: rgba(74,222,128,0.2); }
+  .info-block.orange { background: rgba(249,115,22,0.06);  border-color: rgba(249,115,22,0.2); }
+  .info-block.pink   { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.2); }
+
+  /* Step indicators */
+  .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--accent1); color: #fff;
+    font-size: 0.8rem; font-weight: 800; flex-shrink: 0;
+  }
+  .step-num.purple { background: var(--accent4); }
+  .step-num.green  { background: var(--accent2); color: #0f1117; }
+  .step-num.orange { background: var(--accent3); }
+  .step-num.pink   { background: var(--accent5); }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  thead th {
+    background: rgba(255,255,255,0.04);
+    padding: 10px 14px; text-align: left;
+    font-size: 0.7rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .pill {
+    display: inline-block; padding: 2px 10px; border-radius: 100px;
+    font-size: 0.7rem; font-weight: 600;
+  }
+  .pill.time { background: rgba(167,139,250,0.18); color: var(--accent4); }
+  .pill.freq { background: rgba(79,142,247,0.18);  color: var(--accent1); }
+
+  /* Image cards */
+  .img-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .img-card-header {
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    font-size: 0.88rem; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .img-card img { width: 100%; display: block; }
+  .img-card-footer { padding: 10px 20px; font-size: 0.76rem; color: var(--muted); border-top: 1px solid var(--border); }
+
+  /* Metric tiles */
+  .mini-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+  .mini-metric {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; text-align: center;
+  }
+  .mini-metric .num { font-size: 1.5rem; font-weight: 800; color: var(--accent1); }
+  .mini-metric .lbl { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+
+  /* Code block */
+  pre.code-block {
+    background: rgba(0,0,0,0.35); border-radius: 10px; padding: 18px 22px;
+    font-size: 0.8rem; line-height: 1.7; overflow-x: auto;
+    color: #c9d1d9; font-family: 'Consolas', 'Courier New', monospace;
+    border: 1px solid var(--border);
+  }
+  pre.code-block .cmt { color: #6a9955; }
+  pre.code-block .kw  { color: #c586c0; }
+  pre.code-block .fn  { color: #dcdcaa; }
+  pre.code-block .num { color: #b5cea8; }
+
+  /* Flow diagram */
+  .flow { display: flex; flex-direction: column; align-items: center; }
+  .flow-step {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 22px; width: 100%; max-width: 620px;
+  }
+  .flow-step .title { font-weight: 700; font-size: 0.88rem; }
+  .flow-step .desc { font-size: 0.78rem; color: var(--muted); }
+  .flow-arrow { color: var(--muted); font-size: 1.4rem; padding: 2px 0; }
+
+  /* Layer stack */
+  .layer-stack { display: flex; flex-direction: column; }
+  .layer-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; align-items: center;
+    background: rgba(0,0,0,0.28); border: 1px solid var(--border);
+    border-radius: 9px; padding: 11px 16px;
+  }
+  .layer-row .lname  { font-family: 'Consolas', 'Courier New', monospace; font-size: 0.78rem; color: #c9d1d9; }
+  .layer-row .lshape { font-family: 'Consolas', 'Courier New', monospace; font-size: 0.73rem; color: var(--muted); white-space: nowrap; }
+  .layer-row .lnote  { grid-column: 1 / -1; font-size: 0.74rem; color: var(--muted); }
+  .layer-sep { text-align: center; color: var(--muted); font-size: 0.85rem; line-height: 1.6; opacity: 0.5; }
+
+  /* Model link cards */
+  .model-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 16px; }
+  .model-link {
+    display: block; text-decoration: none; color: inherit;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .model-link:hover { transform: translateY(-3px); }
+  .model-link .mtop  { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .model-link .mname { font-weight: 800; font-size: 1.05rem; }
+  .model-link .mrank { margin-left: auto; font-size: 1.15rem; }
+  .model-link .mrmse { font-size: 1.7rem; font-weight: 800; line-height: 1.2; }
+  .model-link .mlbl  { font-size: 0.72rem; color: var(--muted); }
+  .model-link .mgo   { margin-top: 14px; font-size: 0.78rem; font-weight: 600; }
+
+  /* Charts */
+  .chart-box { position: relative; height: 330px; }
+  .chart-box.tall { height: 420px; }
+
+  /* Collapsible detail */
+  details.more {
+    margin-top: 16px; border: 1px solid var(--border);
+    border-radius: 12px; background: rgba(0,0,0,0.16);
+  }
+  details.more > summary {
+    cursor: pointer; padding: 13px 20px; list-style: none;
+    font-size: 0.84rem; font-weight: 700; color: var(--accent1);
+    display: flex; align-items: center; gap: 8px;
+  }
+  details.more > summary::-webkit-details-marker { display: none; }
+  details.more > summary::before { content: '▸'; font-size: 0.9em; transition: transform 0.15s; }
+  details.more[open] > summary::before { transform: rotate(90deg); }
+  details.more > summary:hover { color: var(--text); }
+  details.more .more-body { padding: 4px 20px 20px; }
+
+  /* Winner banner */
+  .winner {
+    background: linear-gradient(135deg, rgba(74,222,128,0.12), rgba(79,142,247,0.08));
+    border: 1px solid rgba(74,222,128,0.35);
+    border-radius: var(--radius); padding: 26px 30px;
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+  }
+  .winner .trophy { font-size: 2.6rem; }
+
+  /* Prev / next pager */
+  .pager { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .pager a {
+    flex: 1; min-width: 210px; text-decoration: none; color: inherit;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 20px; transition: border-color 0.15s;
+  }
+  .pager a:hover { border-color: var(--accent1); }
+  .pager .plbl  { font-size: 0.72rem; color: var(--muted); }
+  .pager .pname { font-weight: 700; font-size: 0.92rem; }
+  .pager .next  { text-align: right; }
+
+  /* Footer */
+  footer {
+    text-align: center; color: var(--muted); font-size: 0.78rem;
+    padding: 32px; border-top: 1px solid var(--border);
+  }
+  footer a { color: var(--accent1); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<nav style="--nav-active:#f472b6">
+  <span class="logo">⚙️ Bearing RUL</span>
+  <a href="page1.html">🏠 ภาพรวม</a>
+  <a href="page2.html">🧬 CNN-LSTM</a>
+  <a href="page3.html">🔁 LSTM</a>
+  <a href="page4.html">↔️ BiLSTM</a>
+  <a href="page5.html" class="active">🎯 Transformer</a>
+  <a href="page6.html">🏁 เปรียบเทียบ</a>
+</nav>
+
+<div class="hero" style="--hero-a:#f472b6;--hero-b:var(--accent2)">
+  <div class="eyebrow">โมเดลที่ 4 จาก 4 — Self-Attention</div>
+  <h1>🎯 Transformer</h1>
+  <p>ใช้ self-attention ให้ทุก timestep มองเห็นกันได้ทั้งหมดพร้อมกัน แทนการไล่ทีละ step แบบ recurrent เป็นสถาปัตยกรรมที่ครองงาน NLP และเริ่มถูกนำมาใช้กับ time series</p>
+</div>
+
+<main>
+
+<!-- 1. สรุปผล -->
+<section>
+  <div class="section-title">1 &nbsp; ผลของโมเดลนี้</div>
+  <div class="card" style="border-color:#f472b633">
+    <h3><span style="font-size:1.2em">🎯</span> Transformer
+      <span class="pill" style="background:#f472b622;color:#f472b6">Self-Attention</span>
+      <span style="margin-left:auto;font-size:1.3rem">🥉 อันดับ 3 จาก 4</span>
+    </h3>
+    <div class="mini-metrics">
+      <div class="mini-metric"><div class="num" style="color:#f472b6">0.0117</div><div class="lbl">RMSE ↓</div></div>
+      <div class="mini-metric"><div class="num" style="color:#f472b6">0.0070</div><div class="lbl">MAE ↓</div></div>
+      <div class="mini-metric"><div class="num" style="color:#f472b6">0.8993</div><div class="lbl">Pearson r ↑</div></div>
+      <div class="mini-metric"><div class="num" style="color:#f472b6">0.7982</div><div class="lbl">R² ↑</div></div>
+      <div class="mini-metric"><div class="num" style="color:#f472b6">57K</div><div class="lbl">Parameters</div></div>
+      <div class="mini-metric"><div class="num" style="color:#f472b6">45</div><div class="lbl">Epochs ที่เทรนจริง</div></div>
+    </div>
+    <div class="info-block" style="margin-top:18px;border-color:#f472b633">
+      <span style="color:var(--muted);font-size:0.85rem">
+        วัดบน test set 146 ตัวอย่างที่โมเดลไม่เคยเห็น &nbsp;·&nbsp; RMSE สูงกว่าอันดับ 1 (<strong>BiLSTM</strong>) อยู่ <strong>48.9%</strong><br>
+        RMSE คิดเป็น <strong style="color:var(--text)">3.9%</strong> ของช่วง Health Index ทั้งหมด (0.298)
+      </span>
+    </div>
+
+    <div class="info-block orange" style="margin-top:12px">
+      <strong>🧪 เทียบกับ baseline ที่ไม่ต้องเรียนรู้อะไรเลย</strong><br>
+      <span style="color:var(--muted);font-size:0.84rem;line-height:1.9">
+        Health Index ใน test set กระจุกตัวสูงมาก — <strong style="color:var(--text)">84%</strong>
+        ของตัวอย่างอยู่ในช่วง ±0.02 รอบค่ากลาง ดังนั้นแค่
+        <strong style="color:var(--text)">ทายค่าเฉลี่ยเท่ากันทุกครั้ง</strong> ก็ได้ RMSE
+        <strong style="color:var(--text)">0.0261</strong> แล้ว<br>
+        โมเดลนี้ทำได้ <strong style="color:#f472b6">0.0117</strong> —
+        ดีกว่า baseline อยู่ <strong style="color:#f472b6">55%</strong>
+        <span style="opacity:0.8">(ตรงกับค่า R² = 0.7982)</span><br>
+        <span style="font-size:0.95em;opacity:0.85">
+          ตัวเลข RMSE ที่ดูน้อยมากจึงต้องอ่านคู่กับบรรทัดนี้เสมอ ไม่ใช่อ่านลอย ๆ
+        </span>
+      </span>
+    </div>
+  </div>
+</section>
+
+<!-- 2. สถาปัตยกรรม -->
+<section>
+  <div class="section-title">2 &nbsp; สถาปัตยกรรม</div>
+  <div class="row-2">
+    <div class="card">
+      <h3>🧱 โครงสร้างทีละชั้น</h3>
+      <div class="layer-stack">
+    <div class="layer-row" style="border-color:#f472b633">
+      <span class="lname">Input</span><span class="lshape">(B, 20, 56)</span>
+      <span class="lnote">20 timestep x 56 features</span>
+    </div>
+    <div class="layer-sep">↓</div>
+    <div class="layer-row" style="border-color:#f472b633">
+      <span class="lname">Positional Encoding (sin/cos)</span><span class="lshape">(B, 20, 56)</span>
+      <span class="lnote">ใส่ข้อมูลลำดับเข้าไป</span>
+    </div>
+    <div class="layer-sep">↓</div>
+    <div class="layer-row" style="border-color:#f472b633">
+      <span class="lname">TransformerEncoder x2 (nhead=4, ff=128)</span><span class="lshape">(B, 20, 56)</span>
+      <span class="lnote">self-attention ทุก timestep</span>
+    </div>
+    <div class="layer-sep">↓</div>
+    <div class="layer-row" style="border-color:#f472b633">
+      <span class="lname">Mean Pooling</span><span class="lshape">(B, 56)</span>
+      <span class="lnote">เฉลี่ยข้าม 20 timestep</span>
+    </div>
+    <div class="layer-sep">↓</div>
+    <div class="layer-row" style="border-color:#f472b633">
+      <span class="lname">FC(32) → ReLU → FC(1) → Sigmoid</span><span class="lshape">(B,)</span>
+      <span class="lnote">Health Index ∈ (0, 1)</span>
+    </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>💡 แนวคิดเบื้องหลัง</h3>
+      <p style="color:var(--muted);font-size:0.87rem;line-height:1.95">ใช้ self-attention ให้ทุก timestep มองเห็นกันได้ทั้งหมดพร้อมกัน แทนการไล่ทีละ step แบบ recurrent เป็นสถาปัตยกรรมที่ครองงาน NLP และเริ่มถูกนำมาใช้กับ time series</p>
+
+      <div class="info-block green" style="margin-top:18px">
+        <strong>✅ ข้อดี</strong>
+        <ul style="color:var(--muted);font-size:0.83rem;padding-left:20px;line-height:1.9;margin-top:6px"><li>พารามิเตอร์น้อยที่สุดในการทดลองนี้</li><li>คำนวณขนานได้เต็มที่ ไม่ต้องไล่ตามลำดับ</li><li>attention บอกได้ว่า timestep ไหนมีน้ำหนักต่อการทำนาย</li></ul>
+      </div>
+      <div class="info-block orange" style="margin-top:12px">
+        <strong>⚠️ ข้อจำกัด</strong>
+        <ul style="color:var(--muted);font-size:0.83rem;padding-left:20px;line-height:1.9;margin-top:6px"><li>d_model ถูกล็อกไว้ที่ 56 ตามจำนวน feature เพราะไม่มี input projection</li><li>Transformer มักต้องการข้อมูลมากกว่านี้จึงจะเหนือกว่า RNN</li><li>sequence ยาวแค่ 20 step ทำให้ข้อได้เปรียบของ attention ไม่เด่น</li></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. การเทรน -->
+<section>
+  <div class="section-title">3 &nbsp; การเทรน</div>
+  <div class="row-2">
+    <div class="card">
+      <h3>📉 Loss ต่อ epoch</h3>
+      <div class="chart-box"><canvas id="lossChart"></canvas></div>
+      <div class="info-block" style="margin-top:14px;padding:12px 16px;border-color:#f472b633">
+        <span style="color:var(--muted);font-size:0.8rem">
+          แกน Y เป็น log scale — ถ้าเส้น train ลงเรื่อย ๆ แต่ val เริ่มเชิดขึ้น แปลว่าเริ่ม overfit
+        </span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>⚙️ รายละเอียดการเทรน</h3>
+      <table>
+        <thead><tr><th>รายการ</th><th>ค่า</th></tr></thead>
+        <tbody>
+          <tr><td>Epochs ที่เทรนจริง</td><td><strong>45</strong> (สูงสุด 100)</td></tr>
+          <tr><td>หยุดด้วย Early stopping</td><td><strong>ใช่ (val loss ไม่ดีขึ้นติดกัน 15 epoch)</strong></td></tr>
+          <tr><td>Val loss ต่ำสุด</td><td><strong>0.000085</strong></td></tr>
+          <tr><td>เวลาเทรนรวม</td><td><strong>14.7 วินาที</strong></td></tr>
+          <tr><td>เวลาต่อ epoch</td><td><strong>0.33 วินาที</strong></td></tr>
+          <tr><td>จำนวนพารามิเตอร์</td><td><strong>56,881</strong></td></tr>
+          <tr><td>Loss function</td><td>MSE</td></tr>
+          <tr><td>Optimizer</td><td>AdamW (lr 5e-4, wd 1e-4)</td></tr>
+          <tr><td>LR schedule</td><td>CosineAnnealing → 1e-5</td></tr>
+          <tr><td>Gradient clipping</td><td>max_norm = 1.0</td></tr>
+        </tbody>
+      </table>
+      <div class="info-block purple" style="margin-top:14px">
+        <span style="color:var(--muted);font-size:0.82rem">
+          เก็บ checkpoint ที่ <strong style="color:var(--text)">val loss ต่ำสุด</strong> แล้วโหลดกลับมาวัดผลบน test set
+          → ตัวเลข test ไม่เคยถูกใช้เลือกโมเดล
+        </span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. ผลทำนาย -->
+<section>
+  <div class="section-title">4 &nbsp; ผลการทำนายบน Test Set</div>
+  <div class="card">
+    <h3>📈 ค่าจริง vs ค่าที่ทำนาย</h3>
+    <div class="chart-box tall"><canvas id="lineChart"></canvas></div>
+    <div class="info-block" style="margin-top:14px;padding:12px 16px;border-color:#f472b633">
+      <span style="color:var(--muted);font-size:0.8rem">
+        เรียงตัวอย่างตามค่า Health Index จริงจากมากไปน้อย (เพราะ test set ถูกสุ่มลำดับ)
+        เส้นทำนายยิ่งทาบเส้นจริงยิ่งดี
+      </span>
+    </div>
+  </div>
+
+  <div class="row-2" style="margin-top:20px">
+    <div class="card">
+      <h3>🎯 Scatter: จริง vs ทำนาย</h3>
+      <div class="chart-box"><canvas id="scatterChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>📊 การกระจายของ Error</h3>
+      <div class="chart-box"><canvas id="histChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <h3>🔎 ดู error ละเอียด</h3>
+    <div class="row-2">
+      <table>
+        <thead><tr><th>สถิติของ |error|</th><th>ค่า</th><th>ความหมาย</th></tr></thead>
+        <tbody>
+          <tr><td>Median (P50)</td><td><strong>0.0050</strong></td><td>ครึ่งหนึ่งของตัวอย่างพลาดน้อยกว่านี้</td></tr>
+          <tr><td>P90</td><td><strong>0.0142</strong></td><td>90% พลาดน้อยกว่านี้</td></tr>
+          <tr><td>P95</td><td><strong>0.0173</strong></td><td>95% พลาดน้อยกว่านี้</td></tr>
+          <tr><td>Max</td><td><strong>0.0998</strong></td><td>ตัวอย่างที่พลาดหนักที่สุด</td></tr>
+          <tr><td>Bias เฉลี่ย</td><td><strong>-0.00155</strong></td><td>ทำนายต่ำกว่าค่าจริงโดยเฉลี่ย</td></tr>
+        </tbody>
+      </table>
+      <div>
+        <div class="info-block green">
+          <strong>อ่านยังไง</strong><br>
+          <span style="color:var(--muted);font-size:0.83rem;line-height:1.9">
+            ถ้า <strong style="color:var(--text)">RMSE (0.0117)</strong> สูงกว่า
+            <strong style="color:var(--text)">MAE (0.0070)</strong> มาก
+            แปลว่ามีตัวอย่างส่วนน้อยที่พลาดหนักและดึงค่าเฉลี่ยขึ้น —
+            ดูได้จากหางขวาของกราฟการกระจาย error
+          </span>
+        </div>
+        <div class="info-block purple" style="margin-top:12px">
+          <strong>Bias บอกอะไร</strong><br>
+          <span style="color:var(--muted);font-size:0.83rem;line-height:1.9">
+            ค่าบวก = โมเดลมองโลกในแง่ดีเกินจริง (ทำนายว่าสุขภาพดีกว่าความเป็นจริง)
+            ซึ่งอันตรายกว่าในงานบำรุงรักษา เพราะอาจพลาดสัญญาณเตือน
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="img-card" style="margin-top:20px">
+    <div class="img-card-header" style="color:#f472b6">🖼️ กราฟจากสคริปต์เทรน (matplotlib)</div>
+    <img src="outputs/Transformer_prediction.png" alt="Transformer prediction" onerror="this.parentElement.style.display='none'">
+    <div class="img-card-footer">ลำดับตามดัชนีเดิมของ test set — RMSE 0.0117 &nbsp;·&nbsp; MAE 0.0070 &nbsp;·&nbsp; r 0.8993</div>
+  </div>
+</section>
+
+<!-- 5. เทียบกับโมเดลอื่น -->
+<section>
+  <div class="section-title">5 &nbsp; ยืนอยู่ตรงไหนเทียบกับโมเดลอื่น</div>
+  <div class="card">
+    <h3>🏁 อันดับทั้งหมด</h3>
+    <table>
+      <thead><tr><th>อันดับ</th><th>Model</th><th>RMSE ↓</th><th>MAE ↓</th><th>Pearson r ↑</th></tr></thead>
+      <tbody>
+          <tr><td>🥇</td><td><a href="page4.html" style="color:#a78bfa;text-decoration:none">BiLSTM</a></td><td><strong>0.0079</strong></td><td>0.0058</td><td>0.9536</td></tr>
+          <tr><td>🥈</td><td><a href="page3.html" style="color:#f97316;text-decoration:none">LSTM</a></td><td><strong>0.0084</strong></td><td>0.0063</td><td>0.9471</td></tr>
+          <tr style="background:#f472b614"><td>🥉</td><td><strong style="color:#f472b6">Transformer ← หน้านี้</strong></td><td><strong>0.0117</strong></td><td>0.0070</td><td>0.8993</td></tr>
+          <tr><td>#4</td><td><a href="page2.html" style="color:#4f8ef7;text-decoration:none">CNN-LSTM</a></td><td><strong>0.0121</strong></td><td>0.0064</td><td>0.8977</td></tr>
+      </tbody>
+    </table>
+    <div class="info-block" style="margin-top:16px;border-color:#f472b633">
+      <span style="color:var(--muted);font-size:0.84rem">RMSE สูงกว่าอันดับ 1 (<strong>BiLSTM</strong>) อยู่ <strong>48.9%</strong> &nbsp;·&nbsp;
+        <a href="page6.html" style="color:#f472b6;text-decoration:none">ดูหน้าเปรียบเทียบเต็ม →</a>
+      </span>
+    </div>
+  </div>
+</section>
+
+<section><div class="pager"><a href="page4.html"><div class="plbl">← ก่อนหน้า</div><div class="pname">BiLSTM</div></a><a href="page6.html" class="next"><div class="plbl">ถัดไป →</div><div class="pname">เปรียบเทียบทุกโมเดล</div></a></div></section>
+</main>
+
+<footer>
+Bearing RUL Prediction &nbsp;·&nbsp; หน้า 5 จาก 6 &nbsp;·&nbsp; Transformer<br><span style="font-size:0.72rem">หน้านี้สร้างอัตโนมัติจาก <code>outputs/comparison_results.json</code> ด้วย <code>make_report.py</code></span>
+</footer>
+
+<script>
+
+Chart.defaults.color = '#8892b0';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+
+const M = {"name": "Transformer", "color": "#f472b6", "train": [0.002484236504253069, 0.0006814071579180934, 0.0004553540668415803, 0.0003318572504428664, 0.0002786828992652267, 0.00022766034696865568, 0.00020607364294981514, 0.00021259895950000404, 0.00017143855758924338, 0.00015237783846074577, 0.0001463207324235959, 0.00013849957859040136, 0.00013873095065786468, 0.00012730695061489113, 0.00011774841091311019, 0.0001163596253954219, 0.00010776242963469553, 9.9237327361792e-05, 0.00010224571635330062, 0.00010087245623354749, 9.80733457146454e-05, 9.305480234346491e-05, 7.744981486919439e-05, 7.926479903054078e-05, 7.310708892031538e-05, 8.214747998863458e-05, 0.00022020111205401245, 0.00019629445078963827, 0.00011089966166764497, 0.00010623491395057904, 8.50899341996949e-05, 7.820324730817918e-05, 7.55309595101776e-05, 7.39457178214151e-05, 6.995803386046276e-05, 7.134703124325757e-05, 6.300933578266402e-05, 6.423020979801314e-05, 6.409018719784432e-05, 7.119403288083117e-05, 6.410488133379085e-05, 5.9351881356161794e-05, 5.508739182544189e-05, 5.406807651053424e-05, 5.446644821791711e-05], "val": [0.000668895139824599, 0.0004548955669937034, 0.000398496041371901, 0.0003629131129451303, 0.0003368440908767904, 0.00026004354003816843, 0.00023040030242150856, 0.00022262636209941574, 0.00015848717561716007, 0.0002487455300676326, 0.00022924212033912126, 0.00018381303299166675, 0.00016148893660607023, 0.0001655840848494942, 0.00013685612874622975, 0.00014873972395434976, 0.00017875793855637312, 0.00014638819427798607, 0.00016396060366080038, 0.00015613423036282055, 0.00016475494178141363, 0.0001278788040508516, 0.00014321523889925124, 0.00017879860792567747, 0.00011868476212839596, 0.0001623464971392726, 0.00013574117231958857, 0.00011480952283212294, 8.695840935817816e-05, 8.466455134718369e-05, 9.317479917727824e-05, 9.431036879606027e-05, 0.00010178821321460418, 0.0001093917437376351, 0.00010731882422179397, 0.0001143190000018674, 0.00010951546209980734, 0.00011527688649140246, 0.00010902843253764634, 0.00013726966669006893, 0.00011604081232184803, 0.00012037363558192737, 0.0001222199169003741, 0.00010865168486715347, 0.00013243034158626365], "preds": [0.3925780653953552, 0.4209558665752411, 0.3987930715084076, 0.4023171067237854, 0.4082234501838684, 0.4059271216392517, 0.4054098427295685, 0.405381977558136, 0.3882121741771698, 0.4006665349006653, 0.39285391569137573, 0.39813870191574097, 0.38935694098472595, 0.4047125279903412, 0.37540292739868164, 0.38085871934890747, 0.3964974582195282, 0.3928138017654419, 0.4015328884124756, 0.39754530787467957, 0.4028624892234802, 0.39787691831588745, 0.4014620780944824, 0.40821635723114014, 0.40683913230895996, 0.41193386912345886, 0.40412458777427673, 0.41176238656044006, 0.4012940227985382, 0.4113229811191559, 0.41026270389556885, 0.4044199585914612, 0.3771378695964813, 0.4019804298877716, 0.415500670671463, 0.4003278613090515, 0.3822813034057617, 0.40669265389442444, 0.40882641077041626, 0.4024903178215027, 0.392640620470047, 0.3927457630634308, 0.3978968560695648, 0.4098775088787079, 0.4214680790901184, 0.4168321192264557, 0.39456793665885925, 0.4125644564628601, 0.40764766931533813, 0.3973954916000366, 0.41569456458091736, 0.40494197607040405, 0.4003865718841553, 0.3696140944957733, 0.3873794674873352, 0.4084368348121643, 0.37361398339271545, 0.3991122245788574, 0.40828877687454224, 0.3880525529384613, 0.37144720554351807, 0.401811420917511, 0.4068213105201721, 0.41319897770881653, 0.39810851216316223, 0.4020850658416748, 0.39704522490501404, 0.4099845290184021, 0.3921552896499634, 0.39272797107696533, 0.40148407220840454, 0.38327351212501526, 0.39581650495529175, 0.4011493921279907, 0.404702752828598, 0.40160876512527466, 0.3969123065471649, 0.38227054476737976, 0.3929297924041748, 0.4165000021457672, 0.40122485160827637, 0.40330246090888977, 0.41430461406707764, 0.38606175780296326, 0.3954189717769623, 0.39536887407302856, 0.4041098654270172, 0.15520408749580383, 0.4066806733608246, 0.40060511231422424, 0.40334638953208923, 0.3934819996356964, 0.40575891733169556, 0.4153972566127777, 0.40180230140686035, 0.4092218577861786, 0.4194304049015045, 0.3911532163619995, 0.4041925072669983, 0.39436817169189453, 0.4132850170135498, 0.40609103441238403, 0.40465492010116577, 0.40649041533470154, 0.3896256685256958, 0.40926745533943176, 0.40007835626602173, 0.3759000599384308, 0.39722269773483276, 0.3961024880409241, 0.40484634041786194, 0.4111524224281311, 0.3979267477989197, 0.409466952085495, 0.39242735505104065, 0.3978424370288849, 0.3946104943752289, 0.41780346632003784, 0.3944777250289917, 0.39794859290122986, 0.4022413492202759, 0.3967355489730835, 0.3859735429286957, 0.40425628423690796, 0.3808583617210388, 0.4088342785835266, 0.39164209365844727, 0.4138716757297516, 0.4040319323539734, 0.3952457904815674, 0.4145614504814148, 0.4066699147224426, 0.3889326751232147, 0.4076860249042511, 0.3958921432495117, 0.40109047293663025, 0.3984643220901489, 0.40522029995918274, 0.41610628366470337, 0.40270817279815674, 0.40367698669433594, 0.37544235587120056, 0.4021839499473572, 0.4077800512313843, 0.2546710968017578, 0.406812846660614], "targets": [0.3980523645877838, 0.4221416413784027, 0.40213558077812195, 0.4069870412349701, 0.3999975919723511, 0.40543070435523987, 0.42095518112182617, 0.3997378945350647, 0.37609514594078064, 0.40073755383491516, 0.39431121945381165, 0.4020095467567444, 0.4023345112800598, 0.39786526560783386, 0.3808637857437134, 0.3777245283126831, 0.41108208894729614, 0.38940832018852234, 0.42540282011032104, 0.3948404788970947, 0.39578163623809814, 0.40258026123046875, 0.40491175651550293, 0.4021308124065399, 0.3938800096511841, 0.4068875312805176, 0.4090186655521393, 0.39668285846710205, 0.39125555753707886, 0.4132908582687378, 0.39606335759162903, 0.4057028293609619, 0.3726344406604767, 0.4023895561695099, 0.42115846276283264, 0.3955788314342499, 0.37575122714042664, 0.4006052017211914, 0.4040271043777466, 0.3986210525035858, 0.39477962255477905, 0.39015766978263855, 0.4022398293018341, 0.38901251554489136, 0.4169670641422272, 0.4232252240180969, 0.40620070695877075, 0.40071752667427063, 0.40365782380104065, 0.3999685049057007, 0.40982499718666077, 0.40573886036872864, 0.39880967140197754, 0.3572957515716553, 0.37998589873313904, 0.40415987372398376, 0.3680992126464844, 0.3965131640434265, 0.4146006405353546, 0.3833737075328827, 0.35816746950149536, 0.41891971230506897, 0.4041357636451721, 0.42438948154449463, 0.41079601645469666, 0.40817710757255554, 0.3999097943305969, 0.4074957072734833, 0.3972020447254181, 0.38448143005371094, 0.4088822901248932, 0.3955085575580597, 0.4131157100200653, 0.4015085697174072, 0.4064852297306061, 0.398234099149704, 0.39653903245925903, 0.37837082147598267, 0.3918597102165222, 0.4303077757358551, 0.40872374176979065, 0.40721094608306885, 0.4208441376686096, 0.383056104183197, 0.3909631669521332, 0.38610509037971497, 0.4068116843700409, 0.13248464465141296, 0.40522798895835876, 0.4153546094894409, 0.399277001619339, 0.412381112575531, 0.4115214943885803, 0.417350709438324, 0.4027170240879059, 0.40996822714805603, 0.41215550899505615, 0.40047985315322876, 0.39499717950820923, 0.3902181386947632, 0.4174599349498749, 0.4162258803844452, 0.4068034589290619, 0.4027644693851471, 0.39053472876548767, 0.40825092792510986, 0.397842675447464, 0.37322306632995605, 0.40294620394706726, 0.4033658802509308, 0.41681599617004395, 0.4049040675163269, 0.39630448818206787, 0.4095532298088074, 0.39791202545166016, 0.3964388072490692, 0.41153743863105774, 0.42477768659591675, 0.3997858166694641, 0.3905458450317383, 0.4141322374343872, 0.3924081325531006, 0.3868805468082428, 0.3974706530570984, 0.3815799653530121, 0.3970586061477661, 0.41917353868484497, 0.42349785566329956, 0.40350449085235596, 0.3926059305667877, 0.42361685633659363, 0.40208280086517334, 0.39404743909835815, 0.41492462158203125, 0.4025546610355377, 0.4061255156993866, 0.4055708944797516, 0.3994203805923462, 0.41923612356185913, 0.423828661441803, 0.404796302318573, 0.37193575501441956, 0.404116153717041, 0.40520092844963074, 0.35444772243499756, 0.4096052944660187]};
+const idx = M.targets.map((t, i) => i).sort((a, b) => M.targets[b] - M.targets[a]);
+
+new Chart(document.getElementById('lossChart'), {
+  type: 'line',
+  data: {
+    labels: M.train.map((_, i) => i + 1),
+    datasets: [
+      { label: 'Train loss', data: M.train, borderColor: '#8892b0', borderWidth: 2, pointRadius: 0, tension: 0.25 },
+      { label: 'Val loss',   data: M.val,   borderColor: M.color,  borderWidth: 2.4, pointRadius: 0, tension: 0.25 },
+    ],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      y: { type: 'logarithmic', title: { display: true, text: 'MSE Loss (log)' } },
+      x: { title: { display: true, text: 'Epoch' }, ticks: { maxTicksLimit: 12 } },
+    },
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } } },
+  },
+});
+
+new Chart(document.getElementById('lineChart'), {
+  type: 'line',
+  data: {
+    labels: idx.map((_, i) => i + 1),
+    datasets: [
+      { label: 'Health Index จริง', data: idx.map(i => M.targets[i]),
+        borderColor: '#e8eaf6', borderWidth: 2.4, pointRadius: 0, tension: 0.1 },
+      { label: 'ทำนายโดย ' + M.name, data: idx.map(i => M.preds[i]),
+        borderColor: M.color, backgroundColor: M.color + '22',
+        borderWidth: 1.6, pointRadius: 1.5, tension: 0.1, fill: true },
+    ],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      y: { title: { display: true, text: 'Health Index' } },
+      x: { title: { display: true, text: 'ตัวอย่างใน test set (เรียงตามค่าจริง มาก → น้อย)' },
+           ticks: { maxTicksLimit: 15 } },
+    },
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } } },
+  },
+});
+
+const lo = Math.min(...M.targets), hi = Math.max(...M.targets);
+new Chart(document.getElementById('scatterChart'), {
+  type: 'scatter',
+  data: {
+    datasets: [
+      { label: M.name, data: M.targets.map((t, i) => ({ x: t, y: M.preds[i] })),
+        backgroundColor: M.color + 'aa', pointRadius: 3.5 },
+      { label: 'ทำนายสมบูรณ์แบบ', type: 'line',
+        data: [{ x: lo, y: lo }, { x: hi, y: hi }],
+        borderColor: '#8892b0', borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false },
+    ],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      x: { title: { display: true, text: 'Health Index จริง' } },
+      y: { title: { display: true, text: 'Health Index ที่ทำนาย' } },
+    },
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } },
+      tooltip: { callbacks: { label: c => 'จริง ' + c.parsed.x.toFixed(4) + ' → ทำนาย ' + c.parsed.y.toFixed(4) } },
+    },
+  },
+});
+
+const errs = M.targets.map((t, i) => Math.abs(M.preds[i] - t));
+const maxE = Math.max(...errs), NB = 20;
+const bins = new Array(NB).fill(0);
+errs.forEach(e => { bins[Math.min(NB - 1, Math.floor(e / maxE * NB))]++; });
+new Chart(document.getElementById('histChart'), {
+  type: 'bar',
+  data: {
+    labels: bins.map((_, i) => (maxE / NB * i).toFixed(3)),
+    datasets: [{ label: 'จำนวนตัวอย่าง', data: bins, backgroundColor: M.color + 'bb', borderRadius: 3 }],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { beginAtZero: true, title: { display: true, text: 'จำนวนตัวอย่าง' } },
+      x: { title: { display: true, text: '|error| (absolute error)' }, ticks: { maxTicksLimit: 10 } },
+    },
+    plugins: { legend: { display: false } },
+  },
+});
+
+</script>
+
+</body>
+</html>

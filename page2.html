@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CNN-LSTM | Bearing RUL Prediction</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0f1117;
+    --surface:  #1a1d27;
+    --card:     #21263a;
+    --border:   #2e3450;
+    --accent1:  #4f8ef7;
+    --accent2:  #6ee7b7;
+    --accent3:  #f97316;
+    --accent4:  #a78bfa;
+    --accent5:  #f472b6;
+    --text:     #e8eaf6;
+    --muted:    #8892b0;
+    --good:     #4ade80;
+    --radius:   14px;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.65;
+  }
+
+  /* Nav */
+  nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; flex-wrap: wrap;
+    padding: 0 26px; min-height: 54px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  nav .logo { font-weight: 800; font-size: 0.95rem; color: #fff; margin-right: 24px; }
+  nav a {
+    color: var(--muted); text-decoration: none;
+    font-size: 0.82rem; font-weight: 600;
+    padding: 15px 13px; border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s; white-space: nowrap;
+  }
+  nav a:hover { color: var(--text); }
+  nav a.active { color: var(--nav-active); border-bottom-color: var(--nav-active); }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(135deg, #1a1f35 0%, #0f1117 60%);
+    border-bottom: 1px solid var(--border);
+    padding: 50px 40px 46px; text-align: center;
+  }
+  .hero .eyebrow {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+  }
+  .hero h1 {
+    font-size: 2.4rem; font-weight: 800;
+    background: linear-gradient(135deg, var(--hero-a) 0%, var(--hero-b) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: 10px;
+  }
+  .hero p { color: var(--muted); font-size: 1rem; max-width: 680px; margin: 0 auto; }
+
+  /* Layout */
+  main { max-width: 1180px; margin: 0 auto; padding: 40px 24px; display: flex; flex-direction: column; gap: 44px; }
+
+  .section-title {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent1); margin-bottom: 18px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 28px;
+  }
+  .card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  @media (max-width: 860px) { .row-2, .row-3 { grid-template-columns: 1fr; } }
+
+  /* Info blocks */
+  .info-block {
+    background: rgba(79,142,247,0.06);
+    border: 1px solid rgba(79,142,247,0.2);
+    border-radius: 12px; padding: 18px 22px; margin-top: 12px;
+  }
+  .info-block.purple { background: rgba(167,139,250,0.06); border-color: rgba(167,139,250,0.2); }
+  .info-block.green  { background: rgba(74,222,128,0.06);  border-color: rgba(74,222,128,0.2); }
+  .info-block.orange { background: rgba(249,115,22,0.06);  border-color: rgba(249,115,22,0.2); }
+  .info-block.pink   { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.2); }
+
+  /* Step indicators */
+  .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--accent1); color: #fff;
+    font-size: 0.8rem; font-weight: 800; flex-shrink: 0;
+  }
+  .step-num.purple { background: var(--accent4); }
+  .step-num.green  { background: var(--accent2); color: #0f1117; }
+  .step-num.orange { background: var(--accent3); }
+  .step-num.pink   { background: var(--accent5); }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  thead th {
+    background: rgba(255,255,255,0.04);
+    padding: 10px 14px; text-align: left;
+    font-size: 0.7rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .pill {
+    display: inline-block; padding: 2px 10px; border-radius: 100px;
+    font-size: 0.7rem; font-weight: 600;
+  }
+  .pill.time { background: rgba(167,139,250,0.18); color: var(--accent4); }
+  .pill.freq { background: rgba(79,142,247,0.18);  color: var(--accent1); }
+
+  /* Image cards */
+  .img-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .img-card-header {
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    font-size: 0.88rem; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .img-card img { width: 100%; display: block; }
+  .img-card-footer { padding: 10px 20px; font-size: 0.76rem; color: var(--muted); border-top: 1px solid var(--border); }
+
+  /* Metric tiles */
+  .mini-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+  .mini-metric {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; text-align: center;
+  }
+  .mini-metric .num { font-size: 1.5rem; font-weight: 800; color: var(--accent1); }
+  .mini-metric .lbl { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+
+  /* Code block */
+  pre.code-block {
+    background: rgba(0,0,0,0.35); border-radius: 10px; padding: 18px 22px;
+    font-size: 0.8rem; line-height: 1.7; overflow-x: auto;
+    color: #c9d1d9; font-family: 'Consolas', 'Courier New', monospace;
+    border: 1px solid var(--border);
+  }
+  pre.code-block .cmt { color: #6a9955; }
+  pre.code-block .kw  { color: #c586c0; }
+  pre.code-block .fn  { color: #dcdcaa; }
+  pre.code-block .num { color: #b5cea8; }
+
+  /* Flow diagram */
+  .flow { display: flex; flex-direction: column; align-items: center; }
+  .flow-step {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 22px; width: 100%; max-width: 620px;
+  }
+  .flow-step .title { font-weight: 700; font-size: 0.88rem; }
+  .flow-step .desc { font-size: 0.78rem; color: var(--muted); }
+  .flow-arrow { color: var(--muted); font-size: 1.4rem; padding: 2px 0; }
+
+  /* Layer stack */
+  .layer-stack { display: flex; flex-direction: column; }
+  .layer-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; align-items: center;
+    background: rgba(0,0,0,0.28); border: 1px solid var(--border);
+    border-radius: 9px; padding: 11px 16px;
+  }
+  .layer-row .lname  { font-family: 'Consolas', 'Courier New', monospace; font-size: 0.78rem; color: #c9d1d9; }
+  .layer-row .lshape { font-family: 'Consolas', 'Courier New', monospace; font-size: 0.73rem; color: var(--muted); white-space: nowrap; }
+  .layer-row .lnote  { grid-column: 1 / -1; font-size: 0.74rem; color: var(--muted); }
+  .layer-sep { text-align: center; color: var(--muted); font-size: 0.85rem; line-height: 1.6; opacity: 0.5; }
+
+  /* Model link cards */
+  .model-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 16px; }
+  .model-link {
+    display: block; text-decoration: none; color: inherit;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .model-link:hover { transform: translateY(-3px); }
+  .model-link .mtop  { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .model-link .mname { font-weight: 800; font-size: 1.05rem; }
+  .model-link .mrank { margin-left: auto; font-size: 1.15rem; }
+  .model-link .mrmse { font-size: 1.7rem; font-weight: 800; line-height: 1.2; }
+  .model-link .mlbl  { font-size: 0.72rem; color: var(--muted); }
+  .model-link .mgo   { margin-top: 14px; font-size: 0.78rem; font-weight: 600; }
+
+  /* Charts */
+  .chart-box { position: relative; height: 330px; }
+  .chart-box.tall { height: 420px; }
+
+  /* Collapsible detail */
+  details.more {
+    margin-top: 16px; border: 1px solid var(--border);
+    border-radius: 12px; background: rgba(0,0,0,0.16);
+  }
+  details.more > summary {
+    cursor: pointer; padding: 13px 20px; list-style: none;
+    font-size: 0.84rem; font-weight: 700; color: var(--accent1);
+    display: flex; align-items: center; gap: 8px;
+  }
+  details.more > summary::-webkit-details-marker { display: none; }
+  details.more > summary::before { content: '▸'; font-size: 0.9em; transition: transform 0.15s; }
+  details.more[open] > summary::before { transform: rotate(90deg); }
+  details.more > summary:hover { color: var(--text); }
+  details.more .more-body { padding: 4px 20px 20px; }
+
+  /* Winner banner */
+  .winner {
+    background: linear-gradient(135deg, rgba(74,222,128,0.12), rgba(79,142,247,0.08));
+    border: 1px solid rgba(74,222,128,0.35);
+    border-radius: var(--radius); padding: 26px 30px;
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+  }
+  .winner .trophy { font-size: 2.6rem; }
+
+  /* Prev / next pager */
+  .pager { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .pager a {
+    flex: 1; min-width: 210px; text-decoration: none; color: inherit;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 20px; transition: border-color 0.15s;
+  }
+  .pager a:hover { border-color: var(--accent1); }
+  .pager .plbl  { font-size: 0.72rem; color: var(--muted); }
+  .pager .pname { font-weight: 700; font-size: 0.92rem; }
+  .pager .next  { text-align: right; }
+
+  /* Footer */
+  footer {
+    text-align: center; color: var(--muted); font-size: 0.78rem;
+    padding: 32px; border-top: 1px solid var(--border);
+  }
+  footer a { color: var(--accent1); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<nav style="--nav-active:#4f8ef7">
+  <span class="logo">⚙️ Bearing RUL</span>
+  <a href="page1.html">🏠 ภาพรวม</a>
+  <a href="page2.html" class="active">🧬 CNN-LSTM</a>
+  <a href="page3.html">🔁 LSTM</a>
+  <a href="page4.html">↔️ BiLSTM</a>
+  <a href="page5.html">🎯 Transformer</a>
+  <a href="page6.html">🏁 เปรียบเทียบ</a>
+</nav>
+
+<div class="hero" style="--hero-a:#4f8ef7;--hero-b:var(--accent2)">
+  <div class="eyebrow">โมเดลที่ 1 จาก 4 — Hybrid CNN + RNN</div>
+  <h1>🧬 CNN-LSTM</h1>
+  <p>แนวคิดคือให้ CNN ทำหน้าที่อ่าน &quot;รูปร่าง&quot; ของสัญญาณในช่วงสั้น ๆ ก่อน แล้วส่งผลลัพธ์ที่กลั่นแล้วให้ LSTM เรียนรู้แนวโน้มระยะยาว เป็นสถาปัตยกรรมที่ถูกใช้บ่อยที่สุดในงาน RUL prediction</p>
+</div>
+
+<main>
+
+<!-- 1. สรุปผล -->
+<section>
+  <div class="section-title">1 &nbsp; ผลของโมเดลนี้</div>
+  <div class="card" style="border-color:#4f8ef733">
+    <h3><span style="font-size:1.2em">🧬</span> CNN-LSTM
+      <span class="pill" style="background:#4f8ef722;color:#4f8ef7">Hybrid CNN + RNN</span>
+      <span style="margin-left:auto;font-size:1.3rem">#4 อันดับ 4 จาก 4</span>
+    </h3>
+    <div class="mini-metrics">
+      <div class="mini-metric"><div class="num" style="color:#4f8ef7">0.0121</div><div class="lbl">RMSE ↓</div></div>
+      <div class="mini-metric"><div class="num" style="color:#4f8ef7">0.0064</div><div class="lbl">MAE ↓</div></div>
+      <div class="mini-metric"><div class="num" style="color:#4f8ef7">0.8977</div><div class="lbl">Pearson r ↑</div></div>
+      <div class="mini-metric"><div class="num" style="color:#4f8ef7">0.7844</div><div class="lbl">R² ↑</div></div>
+      <div class="mini-metric"><div class="num" style="color:#4f8ef7">250K</div><div class="lbl">Parameters</div></div>
+      <div class="mini-metric"><div class="num" style="color:#4f8ef7">46</div><div class="lbl">Epochs ที่เทรนจริง</div></div>
+    </div>
+    <div class="info-block" style="margin-top:18px;border-color:#4f8ef733">
+      <span style="color:var(--muted);font-size:0.85rem">
+        วัดบน test set 146 ตัวอย่างที่โมเดลไม่เคยเห็น &nbsp;·&nbsp; RMSE สูงกว่าอันดับ 1 (<strong>BiLSTM</strong>) อยู่ <strong>53.9%</strong><br>
+        RMSE คิดเป็น <strong style="color:var(--text)">4.1%</strong> ของช่วง Health Index ทั้งหมด (0.298)
+      </span>
+    </div>
+
+    <div class="info-block orange" style="margin-top:12px">
+      <strong>🧪 เทียบกับ baseline ที่ไม่ต้องเรียนรู้อะไรเลย</strong><br>
+      <span style="color:var(--muted);font-size:0.84rem;line-height:1.9">
+        Health Index ใน test set กระจุกตัวสูงมาก — <strong style="color:var(--text)">84%</strong>
+        ของตัวอย่างอยู่ในช่วง ±0.02 รอบค่ากลาง ดังนั้นแค่
+        <strong style="color:var(--text)">ทายค่าเฉลี่ยเท่ากันทุกครั้ง</strong> ก็ได้ RMSE
+        <strong style="color:var(--text)">0.0261</strong> แล้ว<br>
+        โมเดลนี้ทำได้ <strong style="color:#4f8ef7">0.0121</strong> —
+        ดีกว่า baseline อยู่ <strong style="color:#4f8ef7">54%</strong>
+        <span style="opacity:0.8">(ตรงกับค่า R² = 0.7844)</span><br>
+        <span style="font-size:0.95em;opacity:0.85">
+          ตัวเลข RMSE ที่ดูน้อยมากจึงต้องอ่านคู่กับบรรทัดนี้เสมอ ไม่ใช่อ่านลอย ๆ
+        </span>
+      </span>
+    </div>
+  </div>
+</section>
+
+<!-- 2. สถาปัตยกรรม -->
+<section>
+  <div class="section-title">2 &nbsp; สถาปัตยกรรม</div>
+  <div class="row-2">
+    <div class="card">
+      <h3>🧱 โครงสร้างทีละชั้น</h3>
+      <div class="layer-stack">
+    <div class="layer-row" style="border-color:#4f8ef733">
+      <span class="lname">Input</span><span class="lshape">(B, 20, 56)</span>
+      <span class="lnote">20 timestep x 56 features</span>
+    </div>
+    <div class="layer-sep">↓</div>
+    <div class="layer-row" style="border-color:#4f8ef733">
+      <span class="lname">Conv1D(64, k=7) + BN + ReLU</span><span class="lshape">(B, 64, 20)</span>
+      <span class="lnote">สกัด local pattern ข้าม feature</span>
+    </div>
+    <div class="layer-sep">↓</div>
+    <div class="layer-row" style="border-color:#4f8ef733">
+      <span class="lname">MaxPool(2)</span><span class="lshape">(B, 64, 10)</span>
+      <span class="lnote">ลดความยาวลงครึ่งหนึ่ง</span>
+    </div>
+    <div class="layer-sep">↓</div>
+    <div class="layer-row" style="border-color:#4f8ef733">
+      <span class="lname">Conv1D(128, k=5) + BN + ReLU</span><span class="lshape">(B, 128, 10)</span>
+      <span class="lnote">สกัด pattern ที่ซับซ้อนขึ้น</span>
+    </div>
+    <div class="layer-sep">↓</div>
+    <div class="layer-row" style="border-color:#4f8ef733">
+      <span class="lname">MaxPool(2)</span><span class="lshape">(B, 128, 5)</span>
+      <span class="lnote">เหลือ 5 timestep</span>
+    </div>
+    <div class="layer-sep">↓</div>
+    <div class="layer-row" style="border-color:#4f8ef733">
+      <span class="lname">LSTM(128) + Dropout(0.3)</span><span class="lshape">(B, 5, 128)</span>
+      <span class="lnote">เรียนรู้ลำดับเวลา</span>
+    </div>
+    <div class="layer-sep">↓</div>
+    <div class="layer-row" style="border-color:#4f8ef733">
+      <span class="lname">LSTM(64) + Dropout(0.3)</span><span class="lshape">(B, 5, 64)</span>
+      <span class="lnote">บีบให้กระชับ</span>
+    </div>
+    <div class="layer-sep">↓</div>
+    <div class="layer-row" style="border-color:#4f8ef733">
+      <span class="lname">Last timestep → FC(32) → FC(1) → Sigmoid</span><span class="lshape">(B,)</span>
+      <span class="lnote">Health Index ∈ (0, 1)</span>
+    </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>💡 แนวคิดเบื้องหลัง</h3>
+      <p style="color:var(--muted);font-size:0.87rem;line-height:1.95">แนวคิดคือให้ CNN ทำหน้าที่อ่าน &quot;รูปร่าง&quot; ของสัญญาณในช่วงสั้น ๆ ก่อน แล้วส่งผลลัพธ์ที่กลั่นแล้วให้ LSTM เรียนรู้แนวโน้มระยะยาว เป็นสถาปัตยกรรมที่ถูกใช้บ่อยที่สุดในงาน RUL prediction</p>
+
+      <div class="info-block green" style="margin-top:18px">
+        <strong>✅ ข้อดี</strong>
+        <ul style="color:var(--muted);font-size:0.83rem;padding-left:20px;line-height:1.9;margin-top:6px"><li>จับได้ทั้ง local shape และ temporal trend ในโมเดลเดียว</li><li>BatchNorm ทำให้ training เสถียร ไม่ค่อยมีปัญหา gradient</li></ul>
+      </div>
+      <div class="info-block orange" style="margin-top:12px">
+        <strong>⚠️ ข้อจำกัด</strong>
+        <ul style="color:var(--muted);font-size:0.83rem;padding-left:20px;line-height:1.9;margin-top:6px"><li>พารามิเตอร์เยอะที่สุดในการทดลองนี้</li><li>MaxPool 2 ชั้นบีบ sequence จาก 20 เหลือ 5 → เสีย temporal resolution</li><li>มี hyperparameter ให้ tune เยอะ (kernel size, pool size, channel)</li></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. การเทรน -->
+<section>
+  <div class="section-title">3 &nbsp; การเทรน</div>
+  <div class="row-2">
+    <div class="card">
+      <h3>📉 Loss ต่อ epoch</h3>
+      <div class="chart-box"><canvas id="lossChart"></canvas></div>
+      <div class="info-block" style="margin-top:14px;padding:12px 16px;border-color:#4f8ef733">
+        <span style="color:var(--muted);font-size:0.8rem">
+          แกน Y เป็น log scale — ถ้าเส้น train ลงเรื่อย ๆ แต่ val เริ่มเชิดขึ้น แปลว่าเริ่ม overfit
+        </span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>⚙️ รายละเอียดการเทรน</h3>
+      <table>
+        <thead><tr><th>รายการ</th><th>ค่า</th></tr></thead>
+        <tbody>
+          <tr><td>Epochs ที่เทรนจริง</td><td><strong>46</strong> (สูงสุด 100)</td></tr>
+          <tr><td>หยุดด้วย Early stopping</td><td><strong>ใช่ (val loss ไม่ดีขึ้นติดกัน 15 epoch)</strong></td></tr>
+          <tr><td>Val loss ต่ำสุด</td><td><strong>0.000119</strong></td></tr>
+          <tr><td>เวลาเทรนรวม</td><td><strong>11.7 วินาที</strong></td></tr>
+          <tr><td>เวลาต่อ epoch</td><td><strong>0.25 วินาที</strong></td></tr>
+          <tr><td>จำนวนพารามิเตอร์</td><td><strong>250,497</strong></td></tr>
+          <tr><td>Loss function</td><td>MSE</td></tr>
+          <tr><td>Optimizer</td><td>AdamW (lr 5e-4, wd 1e-4)</td></tr>
+          <tr><td>LR schedule</td><td>CosineAnnealing → 1e-5</td></tr>
+          <tr><td>Gradient clipping</td><td>max_norm = 1.0</td></tr>
+        </tbody>
+      </table>
+      <div class="info-block purple" style="margin-top:14px">
+        <span style="color:var(--muted);font-size:0.82rem">
+          เก็บ checkpoint ที่ <strong style="color:var(--text)">val loss ต่ำสุด</strong> แล้วโหลดกลับมาวัดผลบน test set
+          → ตัวเลข test ไม่เคยถูกใช้เลือกโมเดล
+        </span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. ผลทำนาย -->
+<section>
+  <div class="section-title">4 &nbsp; ผลการทำนายบน Test Set</div>
+  <div class="card">
+    <h3>📈 ค่าจริง vs ค่าที่ทำนาย</h3>
+    <div class="chart-box tall"><canvas id="lineChart"></canvas></div>
+    <div class="info-block" style="margin-top:14px;padding:12px 16px;border-color:#4f8ef733">
+      <span style="color:var(--muted);font-size:0.8rem">
+        เรียงตัวอย่างตามค่า Health Index จริงจากมากไปน้อย (เพราะ test set ถูกสุ่มลำดับ)
+        เส้นทำนายยิ่งทาบเส้นจริงยิ่งดี
+      </span>
+    </div>
+  </div>
+
+  <div class="row-2" style="margin-top:20px">
+    <div class="card">
+      <h3>🎯 Scatter: จริง vs ทำนาย</h3>
+      <div class="chart-box"><canvas id="scatterChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>📊 การกระจายของ Error</h3>
+      <div class="chart-box"><canvas id="histChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <h3>🔎 ดู error ละเอียด</h3>
+    <div class="row-2">
+      <table>
+        <thead><tr><th>สถิติของ |error|</th><th>ค่า</th><th>ความหมาย</th></tr></thead>
+        <tbody>
+          <tr><td>Median (P50)</td><td><strong>0.0050</strong></td><td>ครึ่งหนึ่งของตัวอย่างพลาดน้อยกว่านี้</td></tr>
+          <tr><td>P90</td><td><strong>0.0117</strong></td><td>90% พลาดน้อยกว่านี้</td></tr>
+          <tr><td>P95</td><td><strong>0.0146</strong></td><td>95% พลาดน้อยกว่านี้</td></tr>
+          <tr><td>Max</td><td><strong>0.1168</strong></td><td>ตัวอย่างที่พลาดหนักที่สุด</td></tr>
+          <tr><td>Bias เฉลี่ย</td><td><strong>+0.00133</strong></td><td>ทำนายสูงกว่าค่าจริงโดยเฉลี่ย</td></tr>
+        </tbody>
+      </table>
+      <div>
+        <div class="info-block green">
+          <strong>อ่านยังไง</strong><br>
+          <span style="color:var(--muted);font-size:0.83rem;line-height:1.9">
+            ถ้า <strong style="color:var(--text)">RMSE (0.0121)</strong> สูงกว่า
+            <strong style="color:var(--text)">MAE (0.0064)</strong> มาก
+            แปลว่ามีตัวอย่างส่วนน้อยที่พลาดหนักและดึงค่าเฉลี่ยขึ้น —
+            ดูได้จากหางขวาของกราฟการกระจาย error
+          </span>
+        </div>
+        <div class="info-block purple" style="margin-top:12px">
+          <strong>Bias บอกอะไร</strong><br>
+          <span style="color:var(--muted);font-size:0.83rem;line-height:1.9">
+            ค่าบวก = โมเดลมองโลกในแง่ดีเกินจริง (ทำนายว่าสุขภาพดีกว่าความเป็นจริง)
+            ซึ่งอันตรายกว่าในงานบำรุงรักษา เพราะอาจพลาดสัญญาณเตือน
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="img-card" style="margin-top:20px">
+    <div class="img-card-header" style="color:#4f8ef7">🖼️ กราฟจากสคริปต์เทรน (matplotlib)</div>
+    <img src="outputs/CNN-LSTM_prediction.png" alt="CNN-LSTM prediction" onerror="this.parentElement.style.display='none'">
+    <div class="img-card-footer">ลำดับตามดัชนีเดิมของ test set — RMSE 0.0121 &nbsp;·&nbsp; MAE 0.0064 &nbsp;·&nbsp; r 0.8977</div>
+  </div>
+</section>
+
+<!-- 5. เทียบกับโมเดลอื่น -->
+<section>
+  <div class="section-title">5 &nbsp; ยืนอยู่ตรงไหนเทียบกับโมเดลอื่น</div>
+  <div class="card">
+    <h3>🏁 อันดับทั้งหมด</h3>
+    <table>
+      <thead><tr><th>อันดับ</th><th>Model</th><th>RMSE ↓</th><th>MAE ↓</th><th>Pearson r ↑</th></tr></thead>
+      <tbody>
+          <tr><td>🥇</td><td><a href="page4.html" style="color:#a78bfa;text-decoration:none">BiLSTM</a></td><td><strong>0.0079</strong></td><td>0.0058</td><td>0.9536</td></tr>
+          <tr><td>🥈</td><td><a href="page3.html" style="color:#f97316;text-decoration:none">LSTM</a></td><td><strong>0.0084</strong></td><td>0.0063</td><td>0.9471</td></tr>
+          <tr><td>🥉</td><td><a href="page5.html" style="color:#f472b6;text-decoration:none">Transformer</a></td><td><strong>0.0117</strong></td><td>0.0070</td><td>0.8993</td></tr>
+          <tr style="background:#4f8ef714"><td>#4</td><td><strong style="color:#4f8ef7">CNN-LSTM ← หน้านี้</strong></td><td><strong>0.0121</strong></td><td>0.0064</td><td>0.8977</td></tr>
+      </tbody>
+    </table>
+    <div class="info-block" style="margin-top:16px;border-color:#4f8ef733">
+      <span style="color:var(--muted);font-size:0.84rem">RMSE สูงกว่าอันดับ 1 (<strong>BiLSTM</strong>) อยู่ <strong>53.9%</strong> &nbsp;·&nbsp;
+        <a href="page6.html" style="color:#4f8ef7;text-decoration:none">ดูหน้าเปรียบเทียบเต็ม →</a>
+      </span>
+    </div>
+  </div>
+</section>
+
+<section><div class="pager"><a href="page1.html"><div class="plbl">← ก่อนหน้า</div><div class="pname">ภาพรวมโปรเจกต์</div></a><a href="page3.html" class="next"><div class="plbl">ถัดไป →</div><div class="pname">LSTM</div></a></div></section>
+</main>
+
+<footer>
+Bearing RUL Prediction &nbsp;·&nbsp; หน้า 2 จาก 6 &nbsp;·&nbsp; CNN-LSTM<br><span style="font-size:0.72rem">หน้านี้สร้างอัตโนมัติจาก <code>outputs/comparison_results.json</code> ด้วย <code>make_report.py</code></span>
+</footer>
+
+<script>
+
+Chart.defaults.color = '#8892b0';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+
+const M = {"name": "CNN-LSTM", "color": "#4f8ef7", "train": [0.010451565471098379, 0.002040324277520456, 0.0017159566229330032, 0.0015889392480150694, 0.001299683734498642, 0.0014040565045757426, 0.0013634862730072604, 0.0011376551302425839, 0.0010869766629507973, 0.0008130491931526059, 0.0008406393093712352, 0.0006933141287623181, 0.0007652064241227452, 0.0007722943267112391, 0.0007922452181163761, 0.0007269404593993116, 0.0007988544218069701, 0.0007167774783792319, 0.0006391198258778011, 0.0006973023597944389, 0.0006697828479594102, 0.0007201643444218293, 0.0006145166446071083, 0.0005383209175111174, 0.0005439863557478896, 0.0006055961479864048, 0.0005214547766889963, 0.0005462155683630111, 0.0005753538652573264, 0.0005682727130112687, 0.0005385104321478004, 0.0005638542715287595, 0.0005683417822648254, 0.0005235701751964236, 0.0005062056642405136, 0.0005535040876000291, 0.0005511544271010078, 0.00052109400030329, 0.00045122439427628975, 0.0004914005718159455, 0.0005413401879680653, 0.0004948734499730226, 0.0004589241211888967, 0.00043730911923813877, 0.0004621708890664633, 0.0004477229503983701], "val": [0.0006021343902426048, 0.0006172040949523863, 0.0006334806384984404, 0.0005473342155002885, 0.0005214164783764216, 0.0005640802814418243, 0.00046889551837618154, 0.00048237401966212527, 0.0004514471446681354, 0.0004400499439927646, 0.00032619570588899986, 0.00028869154791916825, 0.00027570039997549937, 0.0002723508174919213, 0.0001926024657829354, 0.00022686863909863556, 0.00024011619259706803, 0.00018019949978527924, 0.00018160783333264085, 0.00016711182817946083, 0.0001589372857577271, 0.00021014596616926914, 0.00012645905210067413, 0.00012697737191855494, 0.00012050727754184563, 0.00012299775779764686, 0.00015206871790319888, 0.00012829295398357013, 0.00013765375640812435, 0.00014122146442079812, 0.00011865518616913405, 0.00013240737057963593, 0.00014573777540742108, 0.00017676345143829368, 0.00011920529828381, 0.0001415459684924119, 0.00016683280490623374, 0.00012368728898258673, 0.00014260933918800825, 0.00014458370262420632, 0.00012824337358728776, 0.00014746525185829442, 0.00016586585520094054, 0.00013262904152118912, 0.00013929884719093226, 0.00016761652902156735], "preds": [0.3947245180606842, 0.41695767641067505, 0.3988094627857208, 0.4087187945842743, 0.4053497016429901, 0.4085525572299957, 0.4115699827671051, 0.405121386051178, 0.3965137302875519, 0.40838131308555603, 0.3946835696697235, 0.4080966114997864, 0.4006716310977936, 0.4101472496986389, 0.3806972801685333, 0.3825708329677582, 0.4023972451686859, 0.39089974761009216, 0.4117303788661957, 0.3995468020439148, 0.40442386269569397, 0.3960873782634735, 0.407172828912735, 0.4127640426158905, 0.41371533274650574, 0.41615456342697144, 0.4090547263622284, 0.40714582800865173, 0.4053707718849182, 0.41596806049346924, 0.4106425642967224, 0.40877431631088257, 0.386398583650589, 0.4063687026500702, 0.4148988723754883, 0.40286314487457275, 0.3853793442249298, 0.4092562794685364, 0.4045301675796509, 0.40067151188850403, 0.39968007802963257, 0.4001377820968628, 0.40464523434638977, 0.40803274512290955, 0.419784277677536, 0.4172450304031372, 0.39629051089286804, 0.4066546559333801, 0.40326303243637085, 0.4027721583843231, 0.4170457720756531, 0.40898847579956055, 0.3983042240142822, 0.3770318031311035, 0.3792074918746948, 0.4093840718269348, 0.37917497754096985, 0.3993804156780243, 0.4055035710334778, 0.3809764087200165, 0.35679709911346436, 0.4103340804576874, 0.40926745533943176, 0.4217510521411896, 0.40039658546447754, 0.4085634648799896, 0.3983926475048065, 0.40813934803009033, 0.4000528156757355, 0.38977962732315063, 0.40825581550598145, 0.39614298939704895, 0.4044090211391449, 0.4059191346168518, 0.41058066487312317, 0.4008283317089081, 0.4015284478664398, 0.3837733864784241, 0.3968319296836853, 0.4216289520263672, 0.40496423840522766, 0.4088183045387268, 0.4164154827594757, 0.3900383710861206, 0.3968453109264374, 0.39919233322143555, 0.4023053050041199, 0.1502974033355713, 0.4067090153694153, 0.40893855690956116, 0.397002637386322, 0.4094754755496979, 0.41104307770729065, 0.4156700074672699, 0.40358099341392517, 0.40507885813713074, 0.41775619983673096, 0.3977054953575134, 0.4042547643184662, 0.3977509140968323, 0.416646271944046, 0.41168197989463806, 0.41141659021377563, 0.4113781750202179, 0.39146846532821655, 0.40979984402656555, 0.4050872027873993, 0.3802226483821869, 0.40507805347442627, 0.40570876002311707, 0.41094139218330383, 0.41663262248039246, 0.39926251769065857, 0.410196453332901, 0.39184823632240295, 0.39646440744400024, 0.40451499819755554, 0.42127931118011475, 0.402363657951355, 0.3997691869735718, 0.41179531812667847, 0.39921441674232483, 0.3969514071941376, 0.40256211161613464, 0.384437620639801, 0.4039342403411865, 0.397190660238266, 0.4167836606502533, 0.4107949435710907, 0.39690935611724854, 0.4159345030784607, 0.4066087305545807, 0.39294710755348206, 0.41300153732299805, 0.40065905451774597, 0.3975130319595337, 0.40541359782218933, 0.4126535654067993, 0.41911062598228455, 0.41307520866394043, 0.40990161895751953, 0.37968361377716064, 0.40724846720695496, 0.4105881452560425, 0.2376701533794403, 0.4076039493083954], "targets": [0.3980523645877838, 0.4221416413784027, 0.40213558077812195, 0.4069870412349701, 0.3999975919723511, 0.40543070435523987, 0.42095518112182617, 0.3997378945350647, 0.37609514594078064, 0.40073755383491516, 0.39431121945381165, 0.4020095467567444, 0.4023345112800598, 0.39786526560783386, 0.3808637857437134, 0.3777245283126831, 0.41108208894729614, 0.38940832018852234, 0.42540282011032104, 0.3948404788970947, 0.39578163623809814, 0.40258026123046875, 0.40491175651550293, 0.4021308124065399, 0.3938800096511841, 0.4068875312805176, 0.4090186655521393, 0.39668285846710205, 0.39125555753707886, 0.4132908582687378, 0.39606335759162903, 0.4057028293609619, 0.3726344406604767, 0.4023895561695099, 0.42115846276283264, 0.3955788314342499, 0.37575122714042664, 0.4006052017211914, 0.4040271043777466, 0.3986210525035858, 0.39477962255477905, 0.39015766978263855, 0.4022398293018341, 0.38901251554489136, 0.4169670641422272, 0.4232252240180969, 0.40620070695877075, 0.40071752667427063, 0.40365782380104065, 0.3999685049057007, 0.40982499718666077, 0.40573886036872864, 0.39880967140197754, 0.3572957515716553, 0.37998589873313904, 0.40415987372398376, 0.3680992126464844, 0.3965131640434265, 0.4146006405353546, 0.3833737075328827, 0.35816746950149536, 0.41891971230506897, 0.4041357636451721, 0.42438948154449463, 0.41079601645469666, 0.40817710757255554, 0.3999097943305969, 0.4074957072734833, 0.3972020447254181, 0.38448143005371094, 0.4088822901248932, 0.3955085575580597, 0.4131157100200653, 0.4015085697174072, 0.4064852297306061, 0.398234099149704, 0.39653903245925903, 0.37837082147598267, 0.3918597102165222, 0.4303077757358551, 0.40872374176979065, 0.40721094608306885, 0.4208441376686096, 0.383056104183197, 0.3909631669521332, 0.38610509037971497, 0.4068116843700409, 0.13248464465141296, 0.40522798895835876, 0.4153546094894409, 0.399277001619339, 0.412381112575531, 0.4115214943885803, 0.417350709438324, 0.4027170240879059, 0.40996822714805603, 0.41215550899505615, 0.40047985315322876, 0.39499717950820923, 0.3902181386947632, 0.4174599349498749, 0.4162258803844452, 0.4068034589290619, 0.4027644693851471, 0.39053472876548767, 0.40825092792510986, 0.397842675447464, 0.37322306632995605, 0.40294620394706726, 0.4033658802509308, 0.41681599617004395, 0.4049040675163269, 0.39630448818206787, 0.4095532298088074, 0.39791202545166016, 0.3964388072490692, 0.41153743863105774, 0.42477768659591675, 0.3997858166694641, 0.3905458450317383, 0.4141322374343872, 0.3924081325531006, 0.3868805468082428, 0.3974706530570984, 0.3815799653530121, 0.3970586061477661, 0.41917353868484497, 0.42349785566329956, 0.40350449085235596, 0.3926059305667877, 0.42361685633659363, 0.40208280086517334, 0.39404743909835815, 0.41492462158203125, 0.4025546610355377, 0.4061255156993866, 0.4055708944797516, 0.3994203805923462, 0.41923612356185913, 0.423828661441803, 0.404796302318573, 0.37193575501441956, 0.404116153717041, 0.40520092844963074, 0.35444772243499756, 0.4096052944660187]};
+const idx = M.targets.map((t, i) => i).sort((a, b) => M.targets[b] - M.targets[a]);
+
+new Chart(document.getElementById('lossChart'), {
+  type: 'line',
+  data: {
+    labels: M.train.map((_, i) => i + 1),
+    datasets: [
+      { label: 'Train loss', data: M.train, borderColor: '#8892b0', borderWidth: 2, pointRadius: 0, tension: 0.25 },
+      { label: 'Val loss',   data: M.val,   borderColor: M.color,  borderWidth: 2.4, pointRadius: 0, tension: 0.25 },
+    ],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      y: { type: 'logarithmic', title: { display: true, text: 'MSE Loss (log)' } },
+      x: { title: { display: true, text: 'Epoch' }, ticks: { maxTicksLimit: 12 } },
+    },
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } } },
+  },
+});
+
+new Chart(document.getElementById('lineChart'), {
+  type: 'line',
+  data: {
+    labels: idx.map((_, i) => i + 1),
+    datasets: [
+      { label: 'Health Index จริง', data: idx.map(i => M.targets[i]),
+        borderColor: '#e8eaf6', borderWidth: 2.4, pointRadius: 0, tension: 0.1 },
+      { label: 'ทำนายโดย ' + M.name, data: idx.map(i => M.preds[i]),
+        borderColor: M.color, backgroundColor: M.color + '22',
+        borderWidth: 1.6, pointRadius: 1.5, tension: 0.1, fill: true },
+    ],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      y: { title: { display: true, text: 'Health Index' } },
+      x: { title: { display: true, text: 'ตัวอย่างใน test set (เรียงตามค่าจริง มาก → น้อย)' },
+           ticks: { maxTicksLimit: 15 } },
+    },
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } } },
+  },
+});
+
+const lo = Math.min(...M.targets), hi = Math.max(...M.targets);
+new Chart(document.getElementById('scatterChart'), {
+  type: 'scatter',
+  data: {
+    datasets: [
+      { label: M.name, data: M.targets.map((t, i) => ({ x: t, y: M.preds[i] })),
+        backgroundColor: M.color + 'aa', pointRadius: 3.5 },
+      { label: 'ทำนายสมบูรณ์แบบ', type: 'line',
+        data: [{ x: lo, y: lo }, { x: hi, y: hi }],
+        borderColor: '#8892b0', borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false },
+    ],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      x: { title: { display: true, text: 'Health Index จริง' } },
+      y: { title: { display: true, text: 'Health Index ที่ทำนาย' } },
+    },
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } },
+      tooltip: { callbacks: { label: c => 'จริง ' + c.parsed.x.toFixed(4) + ' → ทำนาย ' + c.parsed.y.toFixed(4) } },
+    },
+  },
+});
+
+const errs = M.targets.map((t, i) => Math.abs(M.preds[i] - t));
+const maxE = Math.max(...errs), NB = 20;
+const bins = new Array(NB).fill(0);
+errs.forEach(e => { bins[Math.min(NB - 1, Math.floor(e / maxE * NB))]++; });
+new Chart(document.getElementById('histChart'), {
+  type: 'bar',
+  data: {
+    labels: bins.map((_, i) => (maxE / NB * i).toFixed(3)),
+    datasets: [{ label: 'จำนวนตัวอย่าง', data: bins, backgroundColor: M.color + 'bb', borderRadius: 3 }],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { beginAtZero: true, title: { display: true, text: 'จำนวนตัวอย่าง' } },
+      x: { title: { display: true, text: '|error| (absolute error)' }, ticks: { maxTicksLimit: 10 } },
+    },
+    plugins: { legend: { display: false } },
+  },
+});
+
+</script>
+
+</body>
+</html>

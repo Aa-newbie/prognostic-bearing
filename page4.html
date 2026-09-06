@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BiLSTM | Bearing RUL Prediction</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0f1117;
+    --surface:  #1a1d27;
+    --card:     #21263a;
+    --border:   #2e3450;
+    --accent1:  #4f8ef7;
+    --accent2:  #6ee7b7;
+    --accent3:  #f97316;
+    --accent4:  #a78bfa;
+    --accent5:  #f472b6;
+    --text:     #e8eaf6;
+    --muted:    #8892b0;
+    --good:     #4ade80;
+    --radius:   14px;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.65;
+  }
+
+  /* Nav */
+  nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; flex-wrap: wrap;
+    padding: 0 26px; min-height: 54px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  nav .logo { font-weight: 800; font-size: 0.95rem; color: #fff; margin-right: 24px; }
+  nav a {
+    color: var(--muted); text-decoration: none;
+    font-size: 0.82rem; font-weight: 600;
+    padding: 15px 13px; border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s; white-space: nowrap;
+  }
+  nav a:hover { color: var(--text); }
+  nav a.active { color: var(--nav-active); border-bottom-color: var(--nav-active); }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(135deg, #1a1f35 0%, #0f1117 60%);
+    border-bottom: 1px solid var(--border);
+    padding: 50px 40px 46px; text-align: center;
+  }
+  .hero .eyebrow {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+  }
+  .hero h1 {
+    font-size: 2.4rem; font-weight: 800;
+    background: linear-gradient(135deg, var(--hero-a) 0%, var(--hero-b) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: 10px;
+  }
+  .hero p { color: var(--muted); font-size: 1rem; max-width: 680px; margin: 0 auto; }
+
+  /* Layout */
+  main { max-width: 1180px; margin: 0 auto; padding: 40px 24px; display: flex; flex-direction: column; gap: 44px; }
+
+  .section-title {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent1); margin-bottom: 18px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 28px;
+  }
+  .card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  @media (max-width: 860px) { .row-2, .row-3 { grid-template-columns: 1fr; } }
+
+  /* Info blocks */
+  .info-block {
+    background: rgba(79,142,247,0.06);
+    border: 1px solid rgba(79,142,247,0.2);
+    border-radius: 12px; padding: 18px 22px; margin-top: 12px;
+  }
+  .info-block.purple { background: rgba(167,139,250,0.06); border-color: rgba(167,139,250,0.2); }
+  .info-block.green  { background: rgba(74,222,128,0.06);  border-color: rgba(74,222,128,0.2); }
+  .info-block.orange { background: rgba(249,115,22,0.06);  border-color: rgba(249,115,22,0.2); }
+  .info-block.pink   { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.2); }
+
+  /* Step indicators */
+  .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--accent1); color: #fff;
+    font-size: 0.8rem; font-weight: 800; flex-shrink: 0;
+  }
+  .step-num.purple { background: var(--accent4); }
+  .step-num.green  { background: var(--accent2); color: #0f1117; }
+  .step-num.orange { background: var(--accent3); }
+  .step-num.pink   { background: var(--accent5); }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  thead th {
+    background: rgba(255,255,255,0.04);
+    padding: 10px 14px; text-align: left;
+    font-size: 0.7rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .pill {
+    display: inline-block; padding: 2px 10px; border-radius: 100px;
+    font-size: 0.7rem; font-weight: 600;
+  }
+  .pill.time { background: rgba(167,139,250,0.18); color: var(--accent4); }
+  .pill.freq { background: rgba(79,142,247,0.18);  color: var(--accent1); }
+
+  /* Image cards */
+  .img-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .img-card-header {
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    font-size: 0.88rem; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .img-card img { width: 100%; display: block; }
+  .img-card-footer { padding: 10px 20px; font-size: 0.76rem; color: var(--muted); border-top: 1px solid var(--border); }
+
+  /* Metric tiles */
+  .mini-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+  .mini-metric {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; text-align: center;
+  }
+  .mini-metric .num { font-size: 1.5rem; font-weight: 800; color: var(--accent1); }
+  .mini-metric .lbl { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+
+  /* Code block */
+  pre.code-block {
+    background: rgba(0,0,0,0.35); border-radius: 10px; padding: 18px 22px;
+    font-size: 0.8rem; line-height: 1.7; overflow-x: auto;
+    color: #c9d1d9; font-family: 'Consolas', 'Courier New', monospace;
+    border: 1px solid var(--border);
+  }
+  pre.code-block .cmt { color: #6a9955; }
+  pre.code-block .kw  { color: #c586c0; }
+  pre.code-block .fn  { color: #dcdcaa; }
+  pre.code-block .num { color: #b5cea8; }
+
+  /* Flow diagram */
+  .flow { display: flex; flex-direction: column; align-items: center; }
+  .flow-step {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 22px; width: 100%; max-width: 620px;
+  }
+  .flow-step .title { font-weight: 700; font-size: 0.88rem; }
+  .flow-step .desc { font-size: 0.78rem; color: var(--muted); }
+  .flow-arrow { color: var(--muted); font-size: 1.4rem; padding: 2px 0; }
+
+  /* Layer stack */
+  .layer-stack { display: flex; flex-direction: column; }
+  .layer-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; align-items: center;
+    background: rgba(0,0,0,0.28); border: 1px solid var(--border);
+    border-radius: 9px; padding: 11px 16px;
+  }
+  .layer-row .lname  { font-family: 'Consolas', 'Courier New', monospace; font-size: 0.78rem; color: #c9d1d9; }
+  .layer-row .lshape { font-family: 'Consolas', 'Courier New', monospace; font-size: 0.73rem; color: var(--muted); white-space: nowrap; }
+  .layer-row .lnote  { grid-column: 1 / -1; font-size: 0.74rem; color: var(--muted); }
+  .layer-sep { text-align: center; color: var(--muted); font-size: 0.85rem; line-height: 1.6; opacity: 0.5; }
+
+  /* Model link cards */
+  .model-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 16px; }
+  .model-link {
+    display: block; text-decoration: none; color: inherit;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .model-link:hover { transform: translateY(-3px); }
+  .model-link .mtop  { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .model-link .mname { font-weight: 800; font-size: 1.05rem; }
+  .model-link .mrank { margin-left: auto; font-size: 1.15rem; }
+  .model-link .mrmse { font-size: 1.7rem; font-weight: 800; line-height: 1.2; }
+  .model-link .mlbl  { font-size: 0.72rem; color: var(--muted); }
+  .model-link .mgo   { margin-top: 14px; font-size: 0.78rem; font-weight: 600; }
+
+  /* Charts */
+  .chart-box { position: relative; height: 330px; }
+  .chart-box.tall { height: 420px; }
+
+  /* Collapsible detail */
+  details.more {
+    margin-top: 16px; border: 1px solid var(--border);
+    border-radius: 12px; background: rgba(0,0,0,0.16);
+  }
+  details.more > summary {
+    cursor: pointer; padding: 13px 20px; list-style: none;
+    font-size: 0.84rem; font-weight: 700; color: var(--accent1);
+    display: flex; align-items: center; gap: 8px;
+  }
+  details.more > summary::-webkit-details-marker { display: none; }
+  details.more > summary::before { content: '▸'; font-size: 0.9em; transition: transform 0.15s; }
+  details.more[open] > summary::before { transform: rotate(90deg); }
+  details.more > summary:hover { color: var(--text); }
+  details.more .more-body { padding: 4px 20px 20px; }
+
+  /* Winner banner */
+  .winner {
+    background: linear-gradient(135deg, rgba(74,222,128,0.12), rgba(79,142,247,0.08));
+    border: 1px solid rgba(74,222,128,0.35);
+    border-radius: var(--radius); padding: 26px 30px;
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+  }
+  .winner .trophy { font-size: 2.6rem; }
+
+  /* Prev / next pager */
+  .pager { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .pager a {
+    flex: 1; min-width: 210px; text-decoration: none; color: inherit;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 20px; transition: border-color 0.15s;
+  }
+  .pager a:hover { border-color: var(--accent1); }
+  .pager .plbl  { font-size: 0.72rem; color: var(--muted); }
+  .pager .pname { font-weight: 700; font-size: 0.92rem; }
+  .pager .next  { text-align: right; }
+
+  /* Footer */
+  footer {
+    text-align: center; color: var(--muted); font-size: 0.78rem;
+    padding: 32px; border-top: 1px solid var(--border);
+  }
+  footer a { color: var(--accent1); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<nav style="--nav-active:#a78bfa">
+  <span class="logo">⚙️ Bearing RUL</span>
+  <a href="page1.html">🏠 ภาพรวม</a>
+  <a href="page2.html">🧬 CNN-LSTM</a>
+  <a href="page3.html">🔁 LSTM</a>
+  <a href="page4.html" class="active">↔️ BiLSTM</a>
+  <a href="page5.html">🎯 Transformer</a>
+  <a href="page6.html">🏁 เปรียบเทียบ</a>
+</nav>
+
+<div class="hero" style="--hero-a:#a78bfa;--hero-b:var(--accent2)">
+  <div class="eyebrow">โมเดลที่ 3 จาก 4 — Bidirectional RNN</div>
+  <h1>↔️ BiLSTM</h1>
+  <p>อ่าน sequence ทั้งสองทิศทาง ทำให้ทุก timestep เห็น context ทั้งก่อนและหลัง ภายในหน้าต่าง 20 timestep เหมาะกับการประเมินสภาพย้อนหลังจากข้อมูลที่บันทึกไว้แล้ว</p>
+</div>
+
+<main>
+
+<!-- 1. สรุปผล -->
+<section>
+  <div class="section-title">1 &nbsp; ผลของโมเดลนี้</div>
+  <div class="card" style="border-color:#a78bfa33">
+    <h3><span style="font-size:1.2em">↔️</span> BiLSTM
+      <span class="pill" style="background:#a78bfa22;color:#a78bfa">Bidirectional RNN</span>
+      <span style="margin-left:auto;font-size:1.3rem">🥇 อันดับ 1 จาก 4</span>
+    </h3>
+    <div class="mini-metrics">
+      <div class="mini-metric"><div class="num" style="color:#a78bfa">0.0079</div><div class="lbl">RMSE ↓</div></div>
+      <div class="mini-metric"><div class="num" style="color:#a78bfa">0.0058</div><div class="lbl">MAE ↓</div></div>
+      <div class="mini-metric"><div class="num" style="color:#a78bfa">0.9536</div><div class="lbl">Pearson r ↑</div></div>
+      <div class="mini-metric"><div class="num" style="color:#a78bfa">0.9089</div><div class="lbl">R² ↑</div></div>
+      <div class="mini-metric"><div class="num" style="color:#a78bfa">106K</div><div class="lbl">Parameters</div></div>
+      <div class="mini-metric"><div class="num" style="color:#a78bfa">40</div><div class="lbl">Epochs ที่เทรนจริง</div></div>
+    </div>
+    <div class="info-block" style="margin-top:18px;border-color:#a78bfa33">
+      <span style="color:var(--muted);font-size:0.85rem">
+        วัดบน test set 146 ตัวอย่างที่โมเดลไม่เคยเห็น &nbsp;·&nbsp; RMSE ต่ำกว่าอันดับ 2 (<strong>LSTM</strong>) อยู่ <strong>6.0%</strong><br>
+        RMSE คิดเป็น <strong style="color:var(--text)">2.6%</strong> ของช่วง Health Index ทั้งหมด (0.298)
+      </span>
+    </div>
+
+    <div class="info-block orange" style="margin-top:12px">
+      <strong>🧪 เทียบกับ baseline ที่ไม่ต้องเรียนรู้อะไรเลย</strong><br>
+      <span style="color:var(--muted);font-size:0.84rem;line-height:1.9">
+        Health Index ใน test set กระจุกตัวสูงมาก — <strong style="color:var(--text)">84%</strong>
+        ของตัวอย่างอยู่ในช่วง ±0.02 รอบค่ากลาง ดังนั้นแค่
+        <strong style="color:var(--text)">ทายค่าเฉลี่ยเท่ากันทุกครั้ง</strong> ก็ได้ RMSE
+        <strong style="color:var(--text)">0.0261</strong> แล้ว<br>
+        โมเดลนี้ทำได้ <strong style="color:#a78bfa">0.0079</strong> —
+        ดีกว่า baseline อยู่ <strong style="color:#a78bfa">70%</strong>
+        <span style="opacity:0.8">(ตรงกับค่า R² = 0.9089)</span><br>
+        <span style="font-size:0.95em;opacity:0.85">
+          ตัวเลข RMSE ที่ดูน้อยมากจึงต้องอ่านคู่กับบรรทัดนี้เสมอ ไม่ใช่อ่านลอย ๆ
+        </span>
+      </span>
+    </div>
+  </div>
+</section>
+
+<!-- 2. สถาปัตยกรรม -->
+<section>
+  <div class="section-title">2 &nbsp; สถาปัตยกรรม</div>
+  <div class="row-2">
+    <div class="card">
+      <h3>🧱 โครงสร้างทีละชั้น</h3>
+      <div class="layer-stack">
+    <div class="layer-row" style="border-color:#a78bfa33">
+      <span class="lname">Input</span><span class="lshape">(B, 20, 56)</span>
+      <span class="lnote">20 timestep x 56 features</span>
+    </div>
+    <div class="layer-sep">↓</div>
+    <div class="layer-row" style="border-color:#a78bfa33">
+      <span class="lname">BiLSTM(64 x 2 ทิศทาง)</span><span class="lshape">(B, 20, 128)</span>
+      <span class="lnote">อ่านไปข้างหน้า + ย้อนกลับ</span>
+    </div>
+    <div class="layer-sep">↓</div>
+    <div class="layer-row" style="border-color:#a78bfa33">
+      <span class="lname">BiLSTM(32 x 2 ทิศทาง)</span><span class="lshape">(B, 20, 64)</span>
+      <span class="lnote">ชั้นที่สอง</span>
+    </div>
+    <div class="layer-sep">↓</div>
+    <div class="layer-row" style="border-color:#a78bfa33">
+      <span class="lname">Last timestep</span><span class="lshape">(B, 64)</span>
+      <span class="lnote">รวม forward + backward</span>
+    </div>
+    <div class="layer-sep">↓</div>
+    <div class="layer-row" style="border-color:#a78bfa33">
+      <span class="lname">FC(32) → ReLU → FC(1) → Sigmoid</span><span class="lshape">(B,)</span>
+      <span class="lnote">Health Index ∈ (0, 1)</span>
+    </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>💡 แนวคิดเบื้องหลัง</h3>
+      <p style="color:var(--muted);font-size:0.87rem;line-height:1.95">อ่าน sequence ทั้งสองทิศทาง ทำให้ทุก timestep เห็น context ทั้งก่อนและหลัง ภายในหน้าต่าง 20 timestep เหมาะกับการประเมินสภาพย้อนหลังจากข้อมูลที่บันทึกไว้แล้ว</p>
+
+      <div class="info-block green" style="margin-top:18px">
+        <strong>✅ ข้อดี</strong>
+        <ul style="color:var(--muted);font-size:0.83rem;padding-left:20px;line-height:1.9;margin-top:6px"><li>เห็น context สองทิศทางภายในหน้าต่างเดียวกัน</li><li>hidden size เล็กแต่ได้ representation กว้าง</li><li>รักษา temporal resolution ครบ ไม่มี pooling</li></ul>
+      </div>
+      <div class="info-block orange" style="margin-top:12px">
+        <strong>⚠️ ข้อจำกัด</strong>
+        <ul style="color:var(--muted);font-size:0.83rem;padding-left:20px;line-height:1.9;margin-top:6px"><li>ใช้ข้อมูลอนาคตภายในหน้าต่าง → ทำ real-time forecasting ตรง ๆ ไม่ได้</li><li>เทรนช้ากว่า LSTM ธรรมดาเพราะคำนวณสองทิศทาง</li></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. การเทรน -->
+<section>
+  <div class="section-title">3 &nbsp; การเทรน</div>
+  <div class="row-2">
+    <div class="card">
+      <h3>📉 Loss ต่อ epoch</h3>
+      <div class="chart-box"><canvas id="lossChart"></canvas></div>
+      <div class="info-block" style="margin-top:14px;padding:12px 16px;border-color:#a78bfa33">
+        <span style="color:var(--muted);font-size:0.8rem">
+          แกน Y เป็น log scale — ถ้าเส้น train ลงเรื่อย ๆ แต่ val เริ่มเชิดขึ้น แปลว่าเริ่ม overfit
+        </span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>⚙️ รายละเอียดการเทรน</h3>
+      <table>
+        <thead><tr><th>รายการ</th><th>ค่า</th></tr></thead>
+        <tbody>
+          <tr><td>Epochs ที่เทรนจริง</td><td><strong>40</strong> (สูงสุด 100)</td></tr>
+          <tr><td>หยุดด้วย Early stopping</td><td><strong>ใช่ (val loss ไม่ดีขึ้นติดกัน 15 epoch)</strong></td></tr>
+          <tr><td>Val loss ต่ำสุด</td><td><strong>0.000071</strong></td></tr>
+          <tr><td>เวลาเทรนรวม</td><td><strong>9.3 วินาที</strong></td></tr>
+          <tr><td>เวลาต่อ epoch</td><td><strong>0.23 วินาที</strong></td></tr>
+          <tr><td>จำนวนพารามิเตอร์</td><td><strong>106,049</strong></td></tr>
+          <tr><td>Loss function</td><td>MSE</td></tr>
+          <tr><td>Optimizer</td><td>AdamW (lr 5e-4, wd 1e-4)</td></tr>
+          <tr><td>LR schedule</td><td>CosineAnnealing → 1e-5</td></tr>
+          <tr><td>Gradient clipping</td><td>max_norm = 1.0</td></tr>
+        </tbody>
+      </table>
+      <div class="info-block purple" style="margin-top:14px">
+        <span style="color:var(--muted);font-size:0.82rem">
+          เก็บ checkpoint ที่ <strong style="color:var(--text)">val loss ต่ำสุด</strong> แล้วโหลดกลับมาวัดผลบน test set
+          → ตัวเลข test ไม่เคยถูกใช้เลือกโมเดล
+        </span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. ผลทำนาย -->
+<section>
+  <div class="section-title">4 &nbsp; ผลการทำนายบน Test Set</div>
+  <div class="card">
+    <h3>📈 ค่าจริง vs ค่าที่ทำนาย</h3>
+    <div class="chart-box tall"><canvas id="lineChart"></canvas></div>
+    <div class="info-block" style="margin-top:14px;padding:12px 16px;border-color:#a78bfa33">
+      <span style="color:var(--muted);font-size:0.8rem">
+        เรียงตัวอย่างตามค่า Health Index จริงจากมากไปน้อย (เพราะ test set ถูกสุ่มลำดับ)
+        เส้นทำนายยิ่งทาบเส้นจริงยิ่งดี
+      </span>
+    </div>
+  </div>
+
+  <div class="row-2" style="margin-top:20px">
+    <div class="card">
+      <h3>🎯 Scatter: จริง vs ทำนาย</h3>
+      <div class="chart-box"><canvas id="scatterChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>📊 การกระจายของ Error</h3>
+      <div class="chart-box"><canvas id="histChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <h3>🔎 ดู error ละเอียด</h3>
+    <div class="row-2">
+      <table>
+        <thead><tr><th>สถิติของ |error|</th><th>ค่า</th><th>ความหมาย</th></tr></thead>
+        <tbody>
+          <tr><td>Median (P50)</td><td><strong>0.0045</strong></td><td>ครึ่งหนึ่งของตัวอย่างพลาดน้อยกว่านี้</td></tr>
+          <tr><td>P90</td><td><strong>0.0115</strong></td><td>90% พลาดน้อยกว่านี้</td></tr>
+          <tr><td>P95</td><td><strong>0.0166</strong></td><td>95% พลาดน้อยกว่านี้</td></tr>
+          <tr><td>Max</td><td><strong>0.0337</strong></td><td>ตัวอย่างที่พลาดหนักที่สุด</td></tr>
+          <tr><td>Bias เฉลี่ย</td><td><strong>-0.00039</strong></td><td>ทำนายต่ำกว่าค่าจริงโดยเฉลี่ย</td></tr>
+        </tbody>
+      </table>
+      <div>
+        <div class="info-block green">
+          <strong>อ่านยังไง</strong><br>
+          <span style="color:var(--muted);font-size:0.83rem;line-height:1.9">
+            ถ้า <strong style="color:var(--text)">RMSE (0.0079)</strong> สูงกว่า
+            <strong style="color:var(--text)">MAE (0.0058)</strong> มาก
+            แปลว่ามีตัวอย่างส่วนน้อยที่พลาดหนักและดึงค่าเฉลี่ยขึ้น —
+            ดูได้จากหางขวาของกราฟการกระจาย error
+          </span>
+        </div>
+        <div class="info-block purple" style="margin-top:12px">
+          <strong>Bias บอกอะไร</strong><br>
+          <span style="color:var(--muted);font-size:0.83rem;line-height:1.9">
+            ค่าบวก = โมเดลมองโลกในแง่ดีเกินจริง (ทำนายว่าสุขภาพดีกว่าความเป็นจริง)
+            ซึ่งอันตรายกว่าในงานบำรุงรักษา เพราะอาจพลาดสัญญาณเตือน
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="img-card" style="margin-top:20px">
+    <div class="img-card-header" style="color:#a78bfa">🖼️ กราฟจากสคริปต์เทรน (matplotlib)</div>
+    <img src="outputs/BiLSTM_prediction.png" alt="BiLSTM prediction" onerror="this.parentElement.style.display='none'">
+    <div class="img-card-footer">ลำดับตามดัชนีเดิมของ test set — RMSE 0.0079 &nbsp;·&nbsp; MAE 0.0058 &nbsp;·&nbsp; r 0.9536</div>
+  </div>
+</section>
+
+<!-- 5. เทียบกับโมเดลอื่น -->
+<section>
+  <div class="section-title">5 &nbsp; ยืนอยู่ตรงไหนเทียบกับโมเดลอื่น</div>
+  <div class="card">
+    <h3>🏁 อันดับทั้งหมด</h3>
+    <table>
+      <thead><tr><th>อันดับ</th><th>Model</th><th>RMSE ↓</th><th>MAE ↓</th><th>Pearson r ↑</th></tr></thead>
+      <tbody>
+          <tr style="background:#a78bfa14"><td>🥇</td><td><strong style="color:#a78bfa">BiLSTM ← หน้านี้</strong></td><td><strong>0.0079</strong></td><td>0.0058</td><td>0.9536</td></tr>
+          <tr><td>🥈</td><td><a href="page3.html" style="color:#f97316;text-decoration:none">LSTM</a></td><td><strong>0.0084</strong></td><td>0.0063</td><td>0.9471</td></tr>
+          <tr><td>🥉</td><td><a href="page5.html" style="color:#f472b6;text-decoration:none">Transformer</a></td><td><strong>0.0117</strong></td><td>0.0070</td><td>0.8993</td></tr>
+          <tr><td>#4</td><td><a href="page2.html" style="color:#4f8ef7;text-decoration:none">CNN-LSTM</a></td><td><strong>0.0121</strong></td><td>0.0064</td><td>0.8977</td></tr>
+      </tbody>
+    </table>
+    <div class="info-block" style="margin-top:16px;border-color:#a78bfa33">
+      <span style="color:var(--muted);font-size:0.84rem">RMSE ต่ำกว่าอันดับ 2 (<strong>LSTM</strong>) อยู่ <strong>6.0%</strong> &nbsp;·&nbsp;
+        <a href="page6.html" style="color:#a78bfa;text-decoration:none">ดูหน้าเปรียบเทียบเต็ม →</a>
+      </span>
+    </div>
+  </div>
+</section>
+
+<section><div class="pager"><a href="page3.html"><div class="plbl">← ก่อนหน้า</div><div class="pname">LSTM</div></a><a href="page5.html" class="next"><div class="plbl">ถัดไป →</div><div class="pname">Transformer</div></a></div></section>
+</main>
+
+<footer>
+Bearing RUL Prediction &nbsp;·&nbsp; หน้า 4 จาก 6 &nbsp;·&nbsp; BiLSTM<br><span style="font-size:0.72rem">หน้านี้สร้างอัตโนมัติจาก <code>outputs/comparison_results.json</code> ด้วย <code>make_report.py</code></span>
+</footer>
+
+<script>
+
+Chart.defaults.color = '#8892b0';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+
+const M = {"name": "BiLSTM", "color": "#a78bfa", "train": [0.008835110496729612, 0.0025566564933224407, 0.0007284713139826501, 0.000546889701789176, 0.00046585391984855823, 0.00032218146883813595, 0.0002437829838298192, 0.00019865583775013134, 0.0001584846583298511, 0.0001521416292029311, 0.00013207004936972494, 0.00011961912477595939, 0.00011443882454100445, 9.885039275643606e-05, 8.510985600339524e-05, 7.496477045976833e-05, 8.158896253681397e-05, 6.195250010393836e-05, 6.983562182911016e-05, 6.442562182874772e-05, 5.350028794998286e-05, 6.230876929664562e-05, 4.9499887411204526e-05, 4.7140868700807915e-05, 4.486226125327112e-05, 4.513344608481189e-05, 4.254459116728631e-05, 4.405586782821855e-05, 4.252365213620511e-05, 3.877755833349915e-05, 3.8906284165999816e-05, 3.776193487283308e-05, 3.718753699946252e-05, 3.7135228609528256e-05, 3.7613023687973275e-05, 3.482468482212021e-05, 3.240132357287048e-05, 3.386588900967682e-05, 3.3127912748669686e-05, 3.5235529161312754e-05], "val": [0.0034803247286213767, 0.0007590410015028384, 0.000542880006833002, 0.0004353458288177434, 0.00032020778841494274, 0.0002392817421221278, 0.00019718090415052656, 0.000154347593909026, 0.00012970643324984444, 0.00012061775649069912, 0.00011048736471113646, 0.00011295126912753201, 9.555431299506583e-05, 8.844965648475206e-05, 8.321400107686511e-05, 0.00010111347364727408, 9.409168059290905e-05, 7.846924401949056e-05, 8.04483934189193e-05, 7.72669635706633e-05, 7.318728684266616e-05, 7.434664641752736e-05, 7.20290667636113e-05, 7.40848740355836e-05, 7.080280880068635e-05, 7.354633473571287e-05, 7.314278061837993e-05, 7.83923674639987e-05, 7.304191644329371e-05, 7.332601631383618e-05, 7.234153761399082e-05, 7.84036500489391e-05, 7.271459455498391e-05, 8.054195980851848e-05, 7.523215188282645e-05, 8.016552237677388e-05, 7.703018086936531e-05, 8.399189876702924e-05, 7.974154949705634e-05, 7.888830198983972e-05], "preds": [0.3869163393974304, 0.4266682267189026, 0.4019976556301117, 0.4082859754562378, 0.407262921333313, 0.4080580770969391, 0.41712599992752075, 0.40754127502441406, 0.38772153854370117, 0.4074898958206177, 0.3882947266101837, 0.40534549951553345, 0.3982852101325989, 0.40060240030288696, 0.37749290466308594, 0.3747307062149048, 0.4020046889781952, 0.3851402699947357, 0.4078480005264282, 0.39768916368484497, 0.3988325595855713, 0.3992850184440613, 0.40390461683273315, 0.4083310663700104, 0.41935041546821594, 0.418377548456192, 0.40601494908332825, 0.4098435938358307, 0.402677446603775, 0.41554802656173706, 0.4133129417896271, 0.40555137395858765, 0.37167060375213623, 0.4076182246208191, 0.41962727904319763, 0.4020126461982727, 0.3737125098705292, 0.4067024290561676, 0.40803754329681396, 0.4010084271430969, 0.39134326577186584, 0.3913213312625885, 0.4018525183200836, 0.4086688160896301, 0.4257531464099884, 0.42007845640182495, 0.395535945892334, 0.4037855565547943, 0.4040864408016205, 0.4015735387802124, 0.41450509428977966, 0.4062853753566742, 0.39733943343162537, 0.35527029633522034, 0.3834262192249298, 0.4056708812713623, 0.371713787317276, 0.395885705947876, 0.4097541868686676, 0.3785559833049774, 0.3244697153568268, 0.40411460399627686, 0.4070495665073395, 0.4224088788032532, 0.3941825032234192, 0.410711407661438, 0.40003859996795654, 0.40986311435699463, 0.40284737944602966, 0.385002464056015, 0.3984329402446747, 0.3887682259082794, 0.4014708697795868, 0.4026177227497101, 0.41415154933929443, 0.40519168972969055, 0.39765602350234985, 0.3793148100376129, 0.3964240252971649, 0.4190470278263092, 0.40012234449386597, 0.3997531235218048, 0.4191443622112274, 0.38156187534332275, 0.39154744148254395, 0.3925808072090149, 0.40781933069229126, 0.15346486866474152, 0.40288209915161133, 0.40756741166114807, 0.3906489610671997, 0.40267080068588257, 0.4096989333629608, 0.4129055142402649, 0.4070250988006592, 0.4097292125225067, 0.4203777611255646, 0.3980149030685425, 0.4013464152812958, 0.3944733440876007, 0.4134503901004791, 0.409394770860672, 0.4125896692276001, 0.4051637649536133, 0.37993088364601135, 0.4096840023994446, 0.4024119973182678, 0.3644625246524811, 0.40318208932876587, 0.40058618783950806, 0.41125595569610596, 0.4161413908004761, 0.39466431736946106, 0.40926292538642883, 0.3914305865764618, 0.3941282331943512, 0.4000721573829651, 0.4171760678291321, 0.3967805504798889, 0.3990803062915802, 0.4129527509212494, 0.3969711363315582, 0.391422837972641, 0.4028448462486267, 0.38174134492874146, 0.4045897126197815, 0.3979476988315582, 0.4149115979671478, 0.4042169749736786, 0.3975183665752411, 0.417371541261673, 0.41172751784324646, 0.38207483291625977, 0.40096426010131836, 0.39636677503585815, 0.3968544602394104, 0.39955922961235046, 0.4100067913532257, 0.42053577303886414, 0.41358378529548645, 0.4037986993789673, 0.36984774470329285, 0.40435102581977844, 0.4123440980911255, 0.34455135464668274, 0.40846437215805054], "targets": [0.3980523645877838, 0.4221416413784027, 0.40213558077812195, 0.4069870412349701, 0.3999975919723511, 0.40543070435523987, 0.42095518112182617, 0.3997378945350647, 0.37609514594078064, 0.40073755383491516, 0.39431121945381165, 0.4020095467567444, 0.4023345112800598, 0.39786526560783386, 0.3808637857437134, 0.3777245283126831, 0.41108208894729614, 0.38940832018852234, 0.42540282011032104, 0.3948404788970947, 0.39578163623809814, 0.40258026123046875, 0.40491175651550293, 0.4021308124065399, 0.3938800096511841, 0.4068875312805176, 0.4090186655521393, 0.39668285846710205, 0.39125555753707886, 0.4132908582687378, 0.39606335759162903, 0.4057028293609619, 0.3726344406604767, 0.4023895561695099, 0.42115846276283264, 0.3955788314342499, 0.37575122714042664, 0.4006052017211914, 0.4040271043777466, 0.3986210525035858, 0.39477962255477905, 0.39015766978263855, 0.4022398293018341, 0.38901251554489136, 0.4169670641422272, 0.4232252240180969, 0.40620070695877075, 0.40071752667427063, 0.40365782380104065, 0.3999685049057007, 0.40982499718666077, 0.40573886036872864, 0.39880967140197754, 0.3572957515716553, 0.37998589873313904, 0.40415987372398376, 0.3680992126464844, 0.3965131640434265, 0.4146006405353546, 0.3833737075328827, 0.35816746950149536, 0.41891971230506897, 0.4041357636451721, 0.42438948154449463, 0.41079601645469666, 0.40817710757255554, 0.3999097943305969, 0.4074957072734833, 0.3972020447254181, 0.38448143005371094, 0.4088822901248932, 0.3955085575580597, 0.4131157100200653, 0.4015085697174072, 0.4064852297306061, 0.398234099149704, 0.39653903245925903, 0.37837082147598267, 0.3918597102165222, 0.4303077757358551, 0.40872374176979065, 0.40721094608306885, 0.4208441376686096, 0.383056104183197, 0.3909631669521332, 0.38610509037971497, 0.4068116843700409, 0.13248464465141296, 0.40522798895835876, 0.4153546094894409, 0.399277001619339, 0.412381112575531, 0.4115214943885803, 0.417350709438324, 0.4027170240879059, 0.40996822714805603, 0.41215550899505615, 0.40047985315322876, 0.39499717950820923, 0.3902181386947632, 0.4174599349498749, 0.4162258803844452, 0.4068034589290619, 0.4027644693851471, 0.39053472876548767, 0.40825092792510986, 0.397842675447464, 0.37322306632995605, 0.40294620394706726, 0.4033658802509308, 0.41681599617004395, 0.4049040675163269, 0.39630448818206787, 0.4095532298088074, 0.39791202545166016, 0.3964388072490692, 0.41153743863105774, 0.42477768659591675, 0.3997858166694641, 0.3905458450317383, 0.4141322374343872, 0.3924081325531006, 0.3868805468082428, 0.3974706530570984, 0.3815799653530121, 0.3970586061477661, 0.41917353868484497, 0.42349785566329956, 0.40350449085235596, 0.3926059305667877, 0.42361685633659363, 0.40208280086517334, 0.39404743909835815, 0.41492462158203125, 0.4025546610355377, 0.4061255156993866, 0.4055708944797516, 0.3994203805923462, 0.41923612356185913, 0.423828661441803, 0.404796302318573, 0.37193575501441956, 0.404116153717041, 0.40520092844963074, 0.35444772243499756, 0.4096052944660187]};
+const idx = M.targets.map((t, i) => i).sort((a, b) => M.targets[b] - M.targets[a]);
+
+new Chart(document.getElementById('lossChart'), {
+  type: 'line',
+  data: {
+    labels: M.train.map((_, i) => i + 1),
+    datasets: [
+      { label: 'Train loss', data: M.train, borderColor: '#8892b0', borderWidth: 2, pointRadius: 0, tension: 0.25 },
+      { label: 'Val loss',   data: M.val,   borderColor: M.color,  borderWidth: 2.4, pointRadius: 0, tension: 0.25 },
+    ],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      y: { type: 'logarithmic', title: { display: true, text: 'MSE Loss (log)' } },
+      x: { title: { display: true, text: 'Epoch' }, ticks: { maxTicksLimit: 12 } },
+    },
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } } },
+  },
+});
+
+new Chart(document.getElementById('lineChart'), {
+  type: 'line',
+  data: {
+    labels: idx.map((_, i) => i + 1),
+    datasets: [
+      { label: 'Health Index จริง', data: idx.map(i => M.targets[i]),
+        borderColor: '#e8eaf6', borderWidth: 2.4, pointRadius: 0, tension: 0.1 },
+      { label: 'ทำนายโดย ' + M.name, data: idx.map(i => M.preds[i]),
+        borderColor: M.color, backgroundColor: M.color + '22',
+        borderWidth: 1.6, pointRadius: 1.5, tension: 0.1, fill: true },
+    ],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      y: { title: { display: true, text: 'Health Index' } },
+      x: { title: { display: true, text: 'ตัวอย่างใน test set (เรียงตามค่าจริง มาก → น้อย)' },
+           ticks: { maxTicksLimit: 15 } },
+    },
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } } },
+  },
+});
+
+const lo = Math.min(...M.targets), hi = Math.max(...M.targets);
+new Chart(document.getElementById('scatterChart'), {
+  type: 'scatter',
+  data: {
+    datasets: [
+      { label: M.name, data: M.targets.map((t, i) => ({ x: t, y: M.preds[i] })),
+        backgroundColor: M.color + 'aa', pointRadius: 3.5 },
+      { label: 'ทำนายสมบูรณ์แบบ', type: 'line',
+        data: [{ x: lo, y: lo }, { x: hi, y: hi }],
+        borderColor: '#8892b0', borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false },
+    ],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      x: { title: { display: true, text: 'Health Index จริง' } },
+      y: { title: { display: true, text: 'Health Index ที่ทำนาย' } },
+    },
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } },
+      tooltip: { callbacks: { label: c => 'จริง ' + c.parsed.x.toFixed(4) + ' → ทำนาย ' + c.parsed.y.toFixed(4) } },
+    },
+  },
+});
+
+const errs = M.targets.map((t, i) => Math.abs(M.preds[i] - t));
+const maxE = Math.max(...errs), NB = 20;
+const bins = new Array(NB).fill(0);
+errs.forEach(e => { bins[Math.min(NB - 1, Math.floor(e / maxE * NB))]++; });
+new Chart(document.getElementById('histChart'), {
+  type: 'bar',
+  data: {
+    labels: bins.map((_, i) => (maxE / NB * i).toFixed(3)),
+    datasets: [{ label: 'จำนวนตัวอย่าง', data: bins, backgroundColor: M.color + 'bb', borderRadius: 3 }],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { beginAtZero: true, title: { display: true, text: 'จำนวนตัวอย่าง' } },
+      x: { title: { display: true, text: '|error| (absolute error)' }, ticks: { maxTicksLimit: 10 } },
+    },
+    plugins: { legend: { display: false } },
+  },
+});
+
+</script>
+
+</body>
+</html>
